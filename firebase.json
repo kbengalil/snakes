@@ -1,0 +1,30 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "snakes-d6714",
+          "appId": "1:788161246598:android:aa5e9d55e29fcd3da16807",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "snakes-d6714",
+          "configurations": {
+            "android": "1:788161246598:android:aa5e9d55e29fcd3da16807"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default"
+    }
+  ],
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

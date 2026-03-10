@@ -7,6 +7,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/yolo_detector.dart';
+import '../services/cloud_detection_service.dart';
+import '../services/monitoring_service.dart';
 import 'detections_screen.dart';
 
 class StreamScreen extends StatefulWidget {
@@ -31,8 +33,10 @@ class _StreamScreenState extends State<StreamScreen> {
   late final Player _player;
   late final VideoController _controller;
   final YoloDetector _detector = YoloDetector();
+  final CloudDetectionService _cloudService = CloudDetectionService();
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
 
+  bool _cloudMode = false;
   int _frameCount = 0;
   bool _detecting = false;
   String _status = 'Starting...';
@@ -52,6 +56,7 @@ class _StreamScreenState extends State<StreamScreen> {
     _initNotifications();
     _initDetector();
     _startStream();
+    startMonitoring(); // keep app alive in background
   }
 
   Future<void> _initNotifications() async {
@@ -104,14 +109,25 @@ class _StreamScreenState extends State<StreamScreen> {
       final bytes = await _player.screenshot();
       if (bytes == null) return;
 
-      final found = await Future(() => _detector.detectPerson(bytes));
-      if (!mounted) return;
-
-      if (found) {
-        setState(() => _status = 'Detected!');
-        await _sendNotification(bytes);
+      if (_cloudMode) {
+        if (mounted) setState(() => _status = 'Sending to cloud...');
+        final annotated = await _cloudService.detectFrame(bytes);
+        if (!mounted) return;
+        if (annotated != null) {
+          setState(() => _status = 'Detected!');
+          await _sendNotification(annotated);
+        } else {
+          setState(() => _status = 'Watching...');
+        }
       } else {
-        setState(() => _status = 'Watching...');
+        final result = await Future(() => _detector.detect(bytes));
+        if (!mounted) return;
+        if (result.detected) {
+          setState(() => _status = 'Detected!');
+          await _sendNotification(result.annotatedImage);
+        } else {
+          setState(() => _status = 'Watching...');
+        }
       }
     } finally {
       _detecting = false;
@@ -142,7 +158,6 @@ class _StreamScreenState extends State<StreamScreen> {
     _lastNotification = now;
 
     final imagePath = await _saveImage(bytes);
-
     final styleInfo = BigPictureStyleInformation(
       FilePathAndroidBitmap(imagePath),
       hideExpandedLargeIcon: true,
@@ -167,6 +182,7 @@ class _StreamScreenState extends State<StreamScreen> {
 
   @override
   void dispose() {
+    stopMonitoring();
     _detector.dispose();
     _player.dispose();
     super.dispose();
@@ -175,7 +191,31 @@ class _StreamScreenState extends State<StreamScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.cameraName)),
+      appBar: AppBar(
+        title: Text(widget.cameraName),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                Text(
+                  _cloudMode ? 'Cloud' : 'Mobile',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                Switch(
+                  value: _cloudMode,
+                  onChanged: (val) {
+                    setState(() {
+                      _cloudMode = val;
+                      _status = val ? 'Cloud mode active' : 'Watching...';
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       backgroundColor: Colors.black,
       body: Stack(
         children: [

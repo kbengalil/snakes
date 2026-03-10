@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // App uploads raw frames here; Cloud Function reads and deletes them
+    match /frames/{allPaths=**} {
+      allow write: if true;
+      allow read: if false;
+    }
+    // Cloud Function writes annotated detections; app reads them publicly
+    match /detections/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

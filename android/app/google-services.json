@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "788161246598",
+    "project_id": "snakes-d6714",
+    "storage_bucket": "snakes-d6714.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788161246598:android:aa5e9d55e29fcd3da16807",
+        "android_client_info": {
+          "package_name": "com.SnakesAndRats.snakes_rats"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApwfp5swZ5SH4wJ2rvfrU3TNyO4KKCmco"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
