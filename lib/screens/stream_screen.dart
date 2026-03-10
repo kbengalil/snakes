@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/yolo_detector.dart';
+import 'detections_screen.dart';
 
 class StreamScreen extends StatefulWidget {
   final String cameraName;
@@ -53,7 +56,17 @@ class _StreamScreenState extends State<StreamScreen> {
 
   Future<void> _initNotifications() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _notifications.initialize(const InitializationSettings(android: android));
+    await _notifications.initialize(
+      const InitializationSettings(android: android),
+      onDidReceiveNotificationResponse: (response) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DetectionsScreen()),
+          );
+        }
+      },
+    );
     await _notifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
@@ -95,8 +108,8 @@ class _StreamScreenState extends State<StreamScreen> {
       if (!mounted) return;
 
       if (found) {
-        setState(() => _status = 'Person detected!');
-        _sendNotification();
+        setState(() => _status = 'Detected!');
+        await _sendNotification(bytes);
       } else {
         setState(() => _status = 'Watching...');
       }
@@ -105,26 +118,50 @@ class _StreamScreenState extends State<StreamScreen> {
     }
   }
 
-  Future<void> _sendNotification() async {
+  Future<String> _saveImage(Uint8List bytes) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final detectionsDir = Directory('${dir.path}/detections');
+    await detectionsDir.create(recursive: true);
+    final now = DateTime.now();
+    final name = 'detection_'
+        '${now.year}${_pad(now.month)}${_pad(now.day)}_'
+        '${_pad(now.hour)}${_pad(now.minute)}${_pad(now.second)}.jpg';
+    final file = File('${detectionsDir.path}/$name');
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  String _pad(int n) => n.toString().padLeft(2, '0');
+
+  Future<void> _sendNotification(Uint8List bytes) async {
     final now = DateTime.now();
     if (_lastNotification != null &&
         now.difference(_lastNotification!) < const Duration(seconds: 10)) {
-      return; // cooldown
+      return;
     }
     _lastNotification = now;
 
+    final imagePath = await _saveImage(bytes);
+
+    final styleInfo = BigPictureStyleInformation(
+      FilePathAndroidBitmap(imagePath),
+      hideExpandedLargeIcon: true,
+    );
+
     await _notifications.show(
       0,
-      'Person Detected',
-      '${widget.cameraName} detected a person',
-      const NotificationDetails(
+      'Detection Alert',
+      '${widget.cameraName} detected something',
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'detection_channel',
           'Detections',
           importance: Importance.high,
           priority: Priority.high,
+          styleInformation: styleInfo,
         ),
       ),
+      payload: 'detections',
     );
   }
 
@@ -162,7 +199,7 @@ class _StreamScreenState extends State<StreamScreen> {
                 child: Text(
                   _status,
                   style: TextStyle(
-                    color: _status.contains('detected') ? Colors.red : Colors.green,
+                    color: _status.contains('Detected') ? Colors.red : Colors.green,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
