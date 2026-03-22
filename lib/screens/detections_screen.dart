@@ -48,10 +48,44 @@ class _DetectionsScreenState extends State<DetectionsScreen> {
     }
   }
 
+  Future<void> _deleteImage(File f) async {
+    await f.delete();
+    setState(() => _images.remove(f));
+  }
+
+  Future<void> _deleteAll() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete all?'),
+        content: const Text('This will permanently delete all detection images.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete all')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    for (final f in List.of(_images)) {
+      await f.delete();
+    }
+    setState(() => _images = []);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detections')),
+      appBar: AppBar(
+        title: const Text('Detections'),
+        actions: [
+          if (_images.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              tooltip: 'Delete all',
+              onPressed: _deleteAll,
+            ),
+        ],
+      ),
       body: _images.isEmpty
           ? const Center(child: Text('No detections yet.'))
           : GridView.builder(
@@ -64,7 +98,17 @@ class _DetectionsScreenState extends State<DetectionsScreen> {
               ),
               itemCount: _images.length,
               itemBuilder: (context, i) {
-                return GestureDetector(
+                return Dismissible(
+                  key: ValueKey(_images[i].path),
+                  direction: DismissDirection.up,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.topCenter,
+                    padding: const EdgeInsets.only(top: 8),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) => _deleteImage(_images[i]),
+                  child: GestureDetector(
                   onTap: () => _openFullscreen(context, i),
                   child: Stack(
                     fit: StackFit.expand,
@@ -85,6 +129,7 @@ class _DetectionsScreenState extends State<DetectionsScreen> {
                         ),
                       ),
                     ],
+                  ),
                   ),
                 );
               },
