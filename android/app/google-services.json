@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "788161246598",
+    "project_id": "snakes-d6714",
+    "storage_bucket": "snakes-d6714.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788161246598:android:aa5e9d55e29fcd3da16807",
+        "android_client_info": {
+          "package_name": "com.SnakesAndRats.snakes_rats"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "788161246598-74a6d2okaq5gjlfqoc2q7pcas037c345.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.SnakesAndRats.snakes_rats",
+            "certificate_hash": "f95b8a3e488d2b2ac48035dcacef5afa82e3a598"
+          }
+        },
+        {
+          "client_id": "788161246598-1127fkibs553l95pnejf3ctf2o8f1qdd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApwfp5swZ5SH4wJ2rvfrU3TNyO4KKCmco"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "788161246598-1127fkibs553l95pnejf3ctf2o8f1qdd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
