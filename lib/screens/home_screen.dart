@@ -6,12 +6,19 @@ import 'camera_list_screen.dart';
 import 'detections_screen.dart';
 import 'login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  Future<void> _signOut(BuildContext context) async {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _detectEveryNFrames = 10;
+
+  Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
+    if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -19,8 +26,7 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _goToLiveStream(BuildContext context) async {
-    // Enable WiFi if off
+  Future<void> _goToLiveStream() async {
     final enabled = await WiFiForIoTPlugin.isEnabled();
     if (!enabled) {
       await WiFiForIoTPlugin.setEnabled(true);
@@ -30,10 +36,8 @@ class HomeScreen extends StatelessWidget {
     final isConnected = await WiFiForIoTPlugin.isConnected();
 
     if (!isConnected) {
-      // Open WiFi settings panel so user can connect in one tap
       AppSettings.openAppSettings(type: AppSettingsType.wifi);
-
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Connect to your home WiFi then come back'),
@@ -44,10 +48,12 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
-    if (context.mounted) {
+    if (mounted) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const CameraListScreen()),
+        MaterialPageRoute(
+          builder: (_) => CameraListScreen(detectEveryNFrames: _detectEveryNFrames),
+        ),
       );
     }
   }
@@ -62,7 +68,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context),
+            onPressed: _signOut,
           ),
         ],
       ),
@@ -83,7 +89,7 @@ class HomeScreen extends StatelessWidget {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.videocam),
                 label: const Text('Live Stream', style: TextStyle(fontSize: 18)),
-                onPressed: () => _goToLiveStream(context),
+                onPressed: _goToLiveStream,
               ),
             ),
             const SizedBox(height: 20),
@@ -97,6 +103,51 @@ class HomeScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => const DetectionsScreen()),
                 ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            // Detection frequency setting
+            Container(
+              width: 240,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Detect every N frames',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => setState(() =>
+                            _detectEveryNFrames = (_detectEveryNFrames - 1).clamp(1, 120)),
+                        icon: const Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        '$_detectEveryNFrames',
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() =>
+                            _detectEveryNFrames = (_detectEveryNFrames + 1).clamp(1, 120)),
+                        icon: const Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                  ),
+                  Center(
+                    child: Text(
+                      '≈ every ${(_detectEveryNFrames / 25.0).toStringAsFixed(1)}s at 25fps',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

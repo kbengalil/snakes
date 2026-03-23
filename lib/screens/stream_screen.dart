@@ -17,6 +17,7 @@ class StreamScreen extends StatefulWidget {
   final String ip;
   final String username;
   final String password;
+  final int detectEveryNFrames;
 
   const StreamScreen({
     super.key,
@@ -24,6 +25,7 @@ class StreamScreen extends StatefulWidget {
     required this.ip,
     required this.username,
     required this.password,
+    this.detectEveryNFrames = 10,
   });
 
   @override
@@ -38,11 +40,16 @@ class _StreamScreenState extends State<StreamScreen> {
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
 
   bool _cloudMode = false;
-  int _frameCount = 0;
   bool _detecting = false;
   String _status = 'Starting...';
   DateTime? _lastNotification;
   List<DetectionBox> _boxes = [];
+
+  // Detection frequency — initialized from home screen setting
+  late int _detectEveryNFrames;
+  bool _disposed = false;
+  static const double _assumedFps = 25.0;
+  Timer? _detectionTimer;
 
   // Actual video dimensions from media_kit — needed for letterbox calculation
   double _videoWidth = 1920;
@@ -59,6 +66,7 @@ class _StreamScreenState extends State<StreamScreen> {
   @override
   void initState() {
     super.initState();
+    _detectEveryNFrames = widget.detectEveryNFrames;
     _player = Player();
     _controller = VideoController(_player);
 
@@ -98,10 +106,23 @@ class _StreamScreenState extends State<StreamScreen> {
     try {
       await _detector.initialize();
       setState(() => _status = 'Watching...');
-      Timer.periodic(const Duration(milliseconds: 500), _onTick);
+      _restartDetectionTimer();
     } catch (e) {
       setState(() => _status = 'Model error: $e');
     }
+  }
+
+  void _restartDetectionTimer() {
+    _detectionTimer?.cancel();
+    final intervalMs = (_detectEveryNFrames / _assumedFps * 1000).round().clamp(100, 30000);
+    _detectionTimer = Timer.periodic(Duration(milliseconds: intervalMs), _onDetectTick);
+  }
+
+  void _changeFrameInterval(int delta) {
+    final newVal = (_detectEveryNFrames + delta).clamp(1, 120);
+    if (newVal == _detectEveryNFrames) return;
+    setState(() => _detectEveryNFrames = newVal);
+    _restartDetectionTimer();
   }
 
   Future<void> _startStream() async {
@@ -112,24 +133,20 @@ class _StreamScreenState extends State<StreamScreen> {
     await _player.open(Media(_rtspUrl));
   }
 
-  Future<void> _onTick(Timer timer) async {
-    if (!mounted) {
-      timer.cancel();
-      return;
-    }
-    _frameCount++;
-    if (_frameCount % 10 != 0) return;
+  Future<void> _onDetectTick(Timer timer) async {
+    if (_disposed || !mounted) { timer.cancel(); return; }
     if (_detecting) return;
 
     _detecting = true;
     try {
-      final bytes = await _player.screenshot();
-      if (bytes == null) return;
+      final bytes = await _player.screenshot()
+          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+      if (_disposed || !mounted || bytes == null) return;
 
       if (_cloudMode) {
         if (mounted) setState(() => _status = 'Sending to cloud...');
         final annotated = await _cloudService.detectFrame(bytes);
-        if (!mounted) return;
+        if (_disposed || !mounted) return;
         if (annotated != null) {
           setState(() => _status = 'Detected!');
           await _sendNotification(bytes);
@@ -138,7 +155,7 @@ class _StreamScreenState extends State<StreamScreen> {
         }
       } else {
         final result = await _detector.detect(bytes);
-        if (!mounted) return;
+        if (_disposed || !mounted) return;
         if (result.detected) {
           setState(() {
             _status = 'Detected!';
@@ -152,6 +169,8 @@ class _StreamScreenState extends State<StreamScreen> {
           });
         }
       }
+    } catch (_) {
+      // Swallow errors from player being disposed mid-detection
     } finally {
       _detecting = false;
     }
@@ -221,11 +240,19 @@ class _StreamScreenState extends State<StreamScreen> {
 
   @override
   void dispose() {
+    _disposed = true;
+    _detectionTimer?.cancel();
     _widthSub?.cancel();
     _heightSub?.cancel();
     stopMonitoring();
-    _detector.dispose();
     _player.dispose();
+    // Delay interpreter close until any in-flight compute() isolate finishes.
+    // Closing it while the isolate is running causes SIGSEGV (use-after-free).
+    Future.doWhile(() async {
+      if (!_detecting) return false;
+      await Future.delayed(const Duration(milliseconds: 100));
+      return true;
+    }).then((_) => _detector.dispose());
     super.dispose();
   }
 
@@ -235,6 +262,29 @@ class _StreamScreenState extends State<StreamScreen> {
       appBar: AppBar(
         title: Text(widget.cameraName),
         actions: [
+          // Frame interval control
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove, size: 18),
+                onPressed: () => _changeFrameInterval(-1),
+                tooltip: 'Fewer frames',
+                padding: EdgeInsets.zero,
+              ),
+              Text(
+                '$_detectEveryNFrames f',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add, size: 18),
+                onPressed: () => _changeFrameInterval(1),
+                tooltip: 'More frames',
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          // Cloud/Mobile toggle
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: Row(

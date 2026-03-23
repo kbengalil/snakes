@@ -4,7 +4,8 @@ import '../services/onvif_discovery.dart';
 import 'stream_screen.dart';
 
 class CameraListScreen extends StatefulWidget {
-  const CameraListScreen({super.key});
+  final int detectEveryNFrames;
+  const CameraListScreen({super.key, this.detectEveryNFrames = 10});
 
   @override
   State<CameraListScreen> createState() => _CameraListScreenState();
@@ -113,6 +114,7 @@ class _CameraListScreenState extends State<CameraListScreen> {
           ip: device.ip,
           username: user,
           password: pass,
+          detectEveryNFrames: widget.detectEveryNFrames,
         ),
       ),
     );
