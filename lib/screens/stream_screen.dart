@@ -1,258 +1,56 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:path_provider/path_provider.dart';
+import '../services/detection_service.dart';
 import '../services/yolo_detector.dart';
-import '../services/cloud_detection_service.dart';
-import '../services/monitoring_service.dart';
-import 'detections_screen.dart';
 
 class StreamScreen extends StatefulWidget {
-  final String cameraName;
-  final String ip;
-  final String username;
-  final String password;
-  final int detectEveryNFrames;
-
-  const StreamScreen({
-    super.key,
-    required this.cameraName,
-    required this.ip,
-    required this.username,
-    required this.password,
-    this.detectEveryNFrames = 10,
-  });
+  const StreamScreen({super.key});
 
   @override
   State<StreamScreen> createState() => _StreamScreenState();
 }
 
 class _StreamScreenState extends State<StreamScreen> {
-  late final Player _player;
   late final VideoController _controller;
-  final YoloDetector _detector = YoloDetector();
-  final CloudDetectionService _cloudService = CloudDetectionService();
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
-
-  bool _cloudMode = false;
-  bool _detecting = false;
-  String _status = 'Starting...';
-  DateTime? _lastNotification;
-  List<DetectionBox> _boxes = [];
-
-  // Detection frequency — initialized from home screen setting
-  late int _detectEveryNFrames;
-  bool _disposed = false;
-  static const double _assumedFps = 25.0;
-  Timer? _detectionTimer;
-
-  // Actual video dimensions from media_kit — needed for letterbox calculation
-  double _videoWidth = 1920;
-  double _videoHeight = 1080;
+  StreamSubscription? _boxesSub;
   StreamSubscription? _widthSub;
   StreamSubscription? _heightSub;
 
-  String get _rtspUrl {
-    final u = Uri.encodeComponent(widget.username);
-    final p = Uri.encodeComponent(widget.password);
-    return 'rtsp://$u:$p@${widget.ip}:554/stream1';
-  }
+  List<DetectionBox> _boxes = [];
+  double _videoWidth = 1920;
+  double _videoHeight = 1080;
+  String _status = 'Watching...';
 
   @override
   void initState() {
     super.initState();
-    _detectEveryNFrames = widget.detectEveryNFrames;
-    _player = Player();
-    _controller = VideoController(_player);
+    final player = DetectionService.instance.player!;
+    _controller = VideoController(player);
 
-    // Track video dimensions so painter can calculate letterbox rect
-    _widthSub = _player.stream.width.listen((w) {
+    _widthSub = player.stream.width.listen((w) {
       if (w != null && w > 0 && mounted) setState(() => _videoWidth = w.toDouble());
     });
-    _heightSub = _player.stream.height.listen((h) {
+    _heightSub = player.stream.height.listen((h) {
       if (h != null && h > 0 && mounted) setState(() => _videoHeight = h.toDouble());
     });
 
-    _initNotifications();
-    _initDetector();
-    _startStream();
-    startMonitoring();
-  }
-
-  Future<void> _initNotifications() async {
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _notifications.initialize(
-      const InitializationSettings(android: android),
-      onDidReceiveNotificationResponse: (response) {
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const DetectionsScreen()),
-          );
-        }
-      },
-    );
-    await _notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-  }
-
-  Future<void> _initDetector() async {
-    try {
-      await _detector.initialize();
-      setState(() => _status = 'Watching...');
-      _restartDetectionTimer();
-    } catch (e) {
-      setState(() => _status = 'Model error: $e');
-    }
-  }
-
-  void _restartDetectionTimer() {
-    _detectionTimer?.cancel();
-    final intervalMs = (_detectEveryNFrames / _assumedFps * 1000).round().clamp(100, 30000);
-    _detectionTimer = Timer.periodic(Duration(milliseconds: intervalMs), _onDetectTick);
-  }
-
-  void _changeFrameInterval(int delta) {
-    final newVal = (_detectEveryNFrames + delta).clamp(1, 120);
-    if (newVal == _detectEveryNFrames) return;
-    setState(() => _detectEveryNFrames = newVal);
-    _restartDetectionTimer();
-  }
-
-  Future<void> _startStream() async {
-    try {
-      final socket = await Socket.connect(widget.ip, 554, timeout: const Duration(seconds: 3));
-      socket.destroy();
-    } catch (_) {}
-    await _player.open(Media(_rtspUrl));
-  }
-
-  Future<void> _onDetectTick(Timer timer) async {
-    if (_disposed || !mounted) { timer.cancel(); return; }
-    if (_detecting) return;
-
-    _detecting = true;
-    try {
-      final bytes = await _player.screenshot()
-          .timeout(const Duration(seconds: 3), onTimeout: () => null);
-      if (_disposed || !mounted || bytes == null) return;
-
-      if (_cloudMode) {
-        if (mounted) setState(() => _status = 'Sending to cloud...');
-        final annotated = await _cloudService.detectFrame(bytes);
-        if (_disposed || !mounted) return;
-        if (annotated != null) {
-          setState(() => _status = 'Detected!');
-          await _sendNotification(bytes);
-        } else {
-          setState(() => _status = 'Watching...');
-        }
-      } else {
-        final result = await _detector.detect(bytes);
-        if (_disposed || !mounted) return;
-        if (result.detected) {
-          setState(() {
-            _status = 'Detected!';
-            _boxes = result.boxes;
-          });
-          await _sendNotification(bytes);
-        } else {
-          setState(() {
-            _status = 'Watching...';
-            _boxes = [];
-          });
-        }
-      }
-    } catch (_) {
-      // Swallow errors from player being disposed mid-detection
-    } finally {
-      _detecting = false;
-    }
-  }
-
-  Future<String> _saveImage(Uint8List bytes) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final detectionsDir = Directory('${dir.path}/detections');
-    await detectionsDir.create(recursive: true);
-    final now = DateTime.now();
-    final name = 'detection_'
-        '${now.year}${_pad(now.month)}${_pad(now.day)}_'
-        '${_pad(now.hour)}${_pad(now.minute)}${_pad(now.second)}.jpg';
-    final file = File('${detectionsDir.path}/$name');
-
-    // Draw bboxes onto the image before saving
-    final annotated = await Future(() {
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null || _boxes.isEmpty) return bytes;
-      for (final box in _boxes) {
-        final x1 = ((box.cx - box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-        final y1 = ((box.cy - box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-        final x2 = ((box.cx + box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-        final y2 = ((box.cy + box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-        img.drawRect(decoded, x1: x1, y1: y1, x2: x2, y2: y2,
-            color: img.ColorRgb8(255, 0, 0), thickness: 3);
-      }
-      return Uint8List.fromList(img.encodeJpg(decoded, quality: 90));
+    _boxesSub = DetectionService.instance.boxesStream.listen((boxes) {
+      if (!mounted) return;
+      setState(() {
+        _boxes = boxes;
+        _status = boxes.isNotEmpty ? 'Detected!' : 'Watching...';
+      });
     });
-
-    await file.writeAsBytes(annotated);
-    return file.path;
-  }
-
-  String _pad(int n) => n.toString().padLeft(2, '0');
-
-  Future<void> _sendNotification(Uint8List bytes) async {
-    final now = DateTime.now();
-    if (_lastNotification != null &&
-        now.difference(_lastNotification!) < const Duration(seconds: 10)) {
-      return;
-    }
-    _lastNotification = now;
-
-    final imagePath = await _saveImage(bytes);
-    final styleInfo = BigPictureStyleInformation(
-      FilePathAndroidBitmap(imagePath),
-      hideExpandedLargeIcon: true,
-    );
-
-    await _notifications.show(
-      0,
-      'Detection Alert',
-      '${widget.cameraName} detected something',
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'detection_channel',
-          'Detections',
-          importance: Importance.high,
-          priority: Priority.high,
-          styleInformation: styleInfo,
-        ),
-      ),
-      payload: 'detections',
-    );
   }
 
   @override
   void dispose() {
-    _disposed = true;
-    _detectionTimer?.cancel();
+    _boxesSub?.cancel();
     _widthSub?.cancel();
     _heightSub?.cancel();
-    stopMonitoring();
-    _player.dispose();
-    // Delay interpreter close until any in-flight compute() isolate finishes.
-    // Closing it while the isolate is running causes SIGSEGV (use-after-free).
-    Future.doWhile(() async {
-      if (!_detecting) return false;
-      await Future.delayed(const Duration(milliseconds: 100));
-      return true;
-    }).then((_) => _detector.dispose());
+    // Do NOT dispose the player — DetectionService owns it
     super.dispose();
   }
 
@@ -260,69 +58,18 @@ class _StreamScreenState extends State<StreamScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.cameraName),
-        actions: [
-          // Frame interval control
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove, size: 18),
-                onPressed: () => _changeFrameInterval(-1),
-                tooltip: 'Fewer frames',
-                padding: EdgeInsets.zero,
-              ),
-              Text(
-                '$_detectEveryNFrames f',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add, size: 18),
-                onPressed: () => _changeFrameInterval(1),
-                tooltip: 'More frames',
-                padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-          // Cloud/Mobile toggle
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              children: [
-                Text(
-                  _cloudMode ? 'Cloud' : 'Mobile',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                Switch(
-                  value: _cloudMode,
-                  onChanged: (val) {
-                    setState(() {
-                      _cloudMode = val;
-                      _status = val ? 'Cloud mode active' : 'Watching...';
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+        title: Text(DetectionService.instance.cameraName),
       ),
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Video(
-            controller: _controller,
-            controls: NoVideoControls,
-          ),
+          Video(controller: _controller, controls: NoVideoControls),
           if (_boxes.isNotEmpty)
             Positioned.fill(
               child: CustomPaint(
-                painter: _BoxPainter(
-                  _boxes,
-                  videoWidth: _videoWidth,
-                  videoHeight: _videoHeight,
-                ),
+                painter: _BoxPainter(_boxes,
+                    videoWidth: _videoWidth, videoHeight: _videoHeight),
               ),
             ),
           Positioned(
@@ -368,7 +115,7 @@ class _BoxPainter extends CustomPainter {
     final videoAspect = videoWidth / videoHeight;
     final canvasAspect = size.width / size.height;
 
-    Rect videoRect;
+    final Rect videoRect;
     if (videoAspect > canvasAspect) {
       final h = size.width / videoAspect;
       videoRect = Rect.fromLTWH(0, (size.height - h) / 2, size.width, h);
@@ -382,13 +129,8 @@ class _BoxPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    final labelBg = Paint()..color = Colors.black54;
-
     const labelStyle = TextStyle(
-      color: Colors.red,
-      fontSize: 13,
-      fontWeight: FontWeight.bold,
-    );
+        color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold);
 
     for (final box in boxes) {
       final left   = videoRect.left + (box.cx - box.w / 2) * videoRect.width;
@@ -403,14 +145,14 @@ class _BoxPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      final labelX = left.clamp(videoRect.left, videoRect.right - tp.width);
-      final labelY = (top - tp.height - 2).clamp(videoRect.top, videoRect.bottom - tp.height);
+      final lx = left.clamp(videoRect.left, videoRect.right - tp.width);
+      final ly = (top - tp.height - 2).clamp(videoRect.top, videoRect.bottom - tp.height);
 
       canvas.drawRect(
-        Rect.fromLTWH(labelX - 2, labelY - 1, tp.width + 4, tp.height + 2),
-        labelBg,
+        Rect.fromLTWH(lx - 2, ly - 1, tp.width + 4, tp.height + 2),
+        Paint()..color = Colors.black54,
       );
-      tp.paint(canvas, Offset(labelX, labelY));
+      tp.paint(canvas, Offset(lx, ly));
     }
   }
 

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:app_settings/app_settings.dart';
+import '../services/detection_service.dart';
 import 'camera_list_screen.dart';
 import 'detections_screen.dart';
 import 'login_screen.dart';
+import 'stream_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _detectEveryNFrames = 10;
+  int _detectEveryNFrames = DetectionService.instance.detectEveryNFrames;
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
@@ -49,12 +51,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (mounted) {
-      Navigator.push(
+      await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CameraListScreen(detectEveryNFrames: _detectEveryNFrames),
-        ),
+        MaterialPageRoute(builder: (_) => const CameraListScreen()),
       );
+      if (mounted) setState(() {}); // refresh monitoring status on return
     }
   }
 
@@ -82,16 +83,68 @@ class _HomeScreenState extends State<HomeScreen> {
               'Welcome, ${user?.displayName ?? 'User'}',
               style: const TextStyle(fontSize: 18, color: Colors.grey),
             ),
-            const SizedBox(height: 48),
-            SizedBox(
-              width: 240,
-              height: 56,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.videocam),
-                label: const Text('Live Stream', style: TextStyle(fontSize: 18)),
-                onPressed: _goToLiveStream,
+            const SizedBox(height: 32),
+            // Monitoring status banner
+            if (DetectionService.instance.isRunning) ...[
+              Container(
+                width: 240,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  border: Border.all(color: Colors.green),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.circle, color: Colors.green, size: 10),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Monitoring: ${DetectionService.instance.cameraName}',
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 240,
+                height: 48,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.videocam),
+                  label: const Text('View Live Stream'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StreamScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 240,
+                height: 48,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.stop, color: Colors.red),
+                  label: const Text('Stop Monitoring', style: TextStyle(color: Colors.red)),
+                  onPressed: () async {
+                    await DetectionService.instance.stop();
+                    setState(() {});
+                  },
+                ),
+              ),
+            ] else ...[
+              SizedBox(
+                width: 240,
+                height: 56,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.videocam),
+                  label: const Text('Start Monitoring', style: TextStyle(fontSize: 18)),
+                  onPressed: _goToLiveStream,
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               width: 240,
@@ -126,8 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        onPressed: () => setState(() =>
-                            _detectEveryNFrames = (_detectEveryNFrames - 1).clamp(1, 120)),
+                        onPressed: () {
+                          setState(() => _detectEveryNFrames = (_detectEveryNFrames - 1).clamp(1, 120));
+                          DetectionService.instance.updateFrameInterval(_detectEveryNFrames);
+                        },
                         icon: const Icon(Icons.remove_circle_outline),
                       ),
                       Text(
@@ -135,8 +190,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                       ),
                       IconButton(
-                        onPressed: () => setState(() =>
-                            _detectEveryNFrames = (_detectEveryNFrames + 1).clamp(1, 120)),
+                        onPressed: () {
+                          setState(() => _detectEveryNFrames = (_detectEveryNFrames + 1).clamp(1, 120));
+                          DetectionService.instance.updateFrameInterval(_detectEveryNFrames);
+                        },
                         icon: const Icon(Icons.add_circle_outline),
                       ),
                     ],

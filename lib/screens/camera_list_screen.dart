@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/onvif_discovery.dart';
+import '../services/detection_service.dart';
 import 'stream_screen.dart';
 
 class CameraListScreen extends StatefulWidget {
-  final int detectEveryNFrames;
-  const CameraListScreen({super.key, this.detectEveryNFrames = 10});
+  const CameraListScreen({super.key});
 
   @override
   State<CameraListScreen> createState() => _CameraListScreenState();
@@ -105,18 +105,18 @@ class _CameraListScreenState extends State<CameraListScreen> {
     );
   }
 
-  void _openStream(DiscoveredDevice device, String user, String pass) {
+  Future<void> _openStream(DiscoveredDevice device, String user, String pass) async {
+    // Start background detection service
+    await DetectionService.instance.start(
+      ip: device.ip,
+      username: user,
+      password: pass,
+      cameraName: device.name ?? device.ip,
+    );
+    if (!mounted) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => StreamScreen(
-          cameraName: device.name ?? device.ip,
-          ip: device.ip,
-          username: user,
-          password: pass,
-          detectEveryNFrames: widget.detectEveryNFrames,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => const StreamScreen()),
     );
   }
 
