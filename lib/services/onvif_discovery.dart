@@ -85,14 +85,26 @@ class OnvifDiscovery {
   }
 
   static String? _extractName(String xml) {
-    final patterns = [
-      RegExp(r'<.*?FriendlyName[^>]*>([^<]+)<'),
-      RegExp(r'<.*?Name[^>]*>([^<]+)<'),
+    // 1. XML element: <FriendlyName>...</FriendlyName>
+    // 2. XML element: <Name>...</Name>
+    final elementPatterns = [
+      RegExp(r'<[^>]*FriendlyName[^>]*>([^<]+)<'),
+      RegExp(r'<[^>]*Name[^>]*>([^<]+)<'),
     ];
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(xml);
-      if (match != null) return match.group(1);
+    for (final p in elementPatterns) {
+      final m = p.firstMatch(xml);
+      if (m != null) return m.group(1)!.trim();
     }
+
+    // 3. ONVIF scope URI: onvif://www.onvif.org/name/<value>
+    //    Tapo cameras put their model here, e.g. "C200" or "TP-Link%20Tapo%20C200"
+    final scopeMatch =
+        RegExp(r'onvif://www\.onvif\.org/name/([^\s<&]+)').firstMatch(xml);
+    if (scopeMatch != null) {
+      final raw = scopeMatch.group(1)!;
+      return Uri.decodeComponent(raw.replaceAll('+', ' ')).trim();
+    }
+
     return null;
   }
 }

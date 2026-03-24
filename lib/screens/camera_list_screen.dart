@@ -63,44 +63,57 @@ class _CameraListScreenState extends State<CameraListScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(device.name ?? 'Camera'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: userController,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: passController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final user = userController.text.trim();
-              final pass = passController.text;
-              if (user.isEmpty || pass.isEmpty) return;
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          bool obscure = true;
+          return StatefulBuilder(
+            builder: (ctx, setDialogState) => AlertDialog(
+              title: Text(device.name ?? 'Camera'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: userController,
+                    decoration: const InputDecoration(labelText: 'Username'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passController,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final user = userController.text.trim();
+                    final pass = passController.text;
+                    if (user.isEmpty || pass.isEmpty) return;
 
-              // Save credentials for next time
-              await _storage.write(key: 'cam_user_${device.ip}', value: user);
-              await _storage.write(key: 'cam_pass_${device.ip}', value: pass);
+                    // Save credentials for next time
+                    await _storage.write(key: 'cam_user_${device.ip}', value: user);
+                    await _storage.write(key: 'cam_pass_${device.ip}', value: pass);
 
-              if (ctx.mounted) Navigator.pop(ctx);
-              _openStream(device, user, pass);
-            },
-            child: const Text('Connect'),
-          ),
-        ],
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _openStream(device, user, pass);
+                  },
+                  child: const Text('Connect'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

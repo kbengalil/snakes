@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../services/detection_service.dart';
 import '../services/yolo_detector.dart';
@@ -17,11 +17,14 @@ class _StreamScreenState extends State<StreamScreen> {
   StreamSubscription? _boxesSub;
   StreamSubscription? _widthSub;
   StreamSubscription? _heightSub;
+  StreamSubscription? _errorSub;
+  Timer? _connectTimer;
 
   List<DetectionBox> _boxes = [];
   double _videoWidth = 1920;
   double _videoHeight = 1080;
-  String _status = 'Watching...';
+  String _status = 'Connecting...';
+  bool _connectionFailed = false;
 
   @override
   void initState() {
@@ -30,7 +33,12 @@ class _StreamScreenState extends State<StreamScreen> {
     _controller = VideoController(player);
 
     _widthSub = player.stream.width.listen((w) {
-      if (w != null && w > 0 && mounted) setState(() => _videoWidth = w.toDouble());
+      if (w != null && w > 0 && mounted) {
+        setState(() {
+          _videoWidth = w.toDouble();
+          if (_status == 'Connecting...') _status = 'Watching...';
+        });
+      }
     });
     _heightSub = player.stream.height.listen((h) {
       if (h != null && h > 0 && mounted) setState(() => _videoHeight = h.toDouble());
@@ -43,6 +51,53 @@ class _StreamScreenState extends State<StreamScreen> {
         _status = boxes.isNotEmpty ? 'Detected!' : 'Watching...';
       });
     });
+
+    // Catch player errors (e.g. auth failure, bad URL)
+    _errorSub = player.stream.error.listen((err) {
+      if (err.isNotEmpty && mounted && !_connectionFailed) {
+        _onConnectionFailed();
+      }
+    });
+
+    // Fallback: if still connecting after 12s, assume failure
+    _connectTimer = Timer(const Duration(seconds: 12), () {
+      if (mounted && _status == 'Connecting...' && !_connectionFailed) {
+        _onConnectionFailed();
+      }
+    });
+  }
+
+  Future<void> _onConnectionFailed() async {
+    if (_connectionFailed) return;
+    _connectionFailed = true;
+    setState(() => _status = 'Connection failed');
+
+    // Clear saved credentials so user is prompted again next time
+    final ip = DetectionService.instance.ip;
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: 'cam_user_$ip');
+    await storage.delete(key: 'cam_pass_$ip');
+
+    await DetectionService.instance.stop();
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Connection Failed'),
+        content: const Text(
+            'Could not connect to the camera.\nPlease check your username and password.'),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) Navigator.pop(context); // back to camera list
   }
 
   @override
@@ -50,6 +105,8 @@ class _StreamScreenState extends State<StreamScreen> {
     _boxesSub?.cancel();
     _widthSub?.cancel();
     _heightSub?.cancel();
+    _errorSub?.cancel();
+    _connectTimer?.cancel();
     // Do NOT dispose the player — DetectionService owns it
     super.dispose();
   }
@@ -86,7 +143,11 @@ class _StreamScreenState extends State<StreamScreen> {
                 child: Text(
                   _status,
                   style: TextStyle(
-                    color: _status.contains('Detected') ? Colors.red : Colors.green,
+                    color: _status.contains('Detected')
+                        ? Colors.red
+                        : _status.contains('failed') || _status.contains('Connecting')
+                            ? Colors.orange
+                            : Colors.green,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
