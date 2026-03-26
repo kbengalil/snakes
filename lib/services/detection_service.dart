@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image/image.dart' as img;
 import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
@@ -42,6 +43,8 @@ class DetectionService {
     required String username,
     required String password,
     required String cameraName,
+    int port = 554,
+    String rtspPath = '/stream1',
   }) async {
     await stop();
 
@@ -64,7 +67,11 @@ class DetectionService {
     _player = Player();
     final u = Uri.encodeComponent(username);
     final p = Uri.encodeComponent(password);
-    await _player!.open(Media('rtsp://$u:$p@$ip:554/stream1'));
+    await _player!.open(Media('rtsp://$u:$p@$ip:$port$rtspPath'));
+
+    // Remember this camera so the WiFi watcher can reconnect automatically
+    const storage = FlutterSecureStorage();
+    await storage.write(key: 'cam_last_ip', value: ip);
 
     startMonitoring();
     _restartTimer();

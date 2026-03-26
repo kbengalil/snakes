@@ -122,6 +122,7 @@ class _CameraListScreenState extends State<CameraListScreen> {
     // Start background detection service
     await DetectionService.instance.start(
       ip: device.ip,
+      port: device.rtspPort,
       username: user,
       password: pass,
       cameraName: device.name ?? device.ip,
@@ -130,6 +131,40 @@ class _CameraListScreenState extends State<CameraListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const StreamScreen()),
+    );
+  }
+
+  void _showAddManuallyDialog() {
+    final ipController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Camera by IP'),
+        content: TextField(
+          controller: ipController,
+          decoration: const InputDecoration(
+            labelText: 'IP Address',
+            hintText: 'e.g. 192.168.1.17',
+          ),
+          keyboardType: TextInputType.number,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final ip = ipController.text.trim();
+              if (ip.isEmpty) return;
+              Navigator.pop(ctx);
+              _connectToCamera(DiscoveredDevice(ip: ip));
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -144,6 +179,11 @@ class _CameraListScreenState extends State<CameraListScreen> {
             onPressed: _scanNetwork,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddManuallyDialog,
+        tooltip: 'Add by IP',
+        child: const Icon(Icons.add),
       ),
       body: _buildBody(),
     );

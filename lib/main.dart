@@ -2,12 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'firebase_options.dart';
 import 'services/monitoring_service.dart';
+import 'services/detection_service.dart';
+import 'services/wifi_watcher_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/detections_screen.dart';
 
@@ -44,9 +47,26 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await initMonitoringService();
+  await WifiWatcherService.configure();
 
   // Save image when FCM arrives while app is in foreground
   FirebaseMessaging.onMessage.listen(_saveDetectionFromMessage);
+
+  // Background service → main isolate: start detection automatically
+  WifiWatcherService.onStartDetection.listen((data) async {
+    final ip = data?['ip'] as String?;
+    if (ip == null || DetectionService.instance.isRunning) return;
+    const storage = FlutterSecureStorage();
+    final user  = await storage.read(key: 'cam_user_$ip');
+    final pass  = await storage.read(key: 'cam_pass_$ip');
+    final port  = int.tryParse(await storage.read(key: 'cam_port_$ip') ?? '554') ?? 554;
+    final rtsp  = await storage.read(key: 'cam_rtsp_$ip') ?? '/stream1';
+    if (user == null || pass == null) return;
+    await DetectionService.instance.start(
+      ip: ip, username: user, password: pass,
+      cameraName: ip, port: port, rtspPath: rtsp,
+    );
+  });
 
   runApp(const MyApp());
 }
@@ -77,6 +97,24 @@ class _MyAppState extends State<MyApp> {
           MaterialPageRoute(builder: (_) => const DetectionsScreen()),
         );
       });
+    }
+
+    // Auto-start detection if WiFi watcher flagged it
+    const storage = FlutterSecureStorage();
+    final pending = await storage.read(key: 'auto_start_pending');
+    if (pending == 'true') {
+      await storage.delete(key: 'auto_start_pending');
+      final ip   = await storage.read(key: 'cam_last_ip');
+      final user = ip != null ? await storage.read(key: 'cam_user_$ip') : null;
+      final pass = ip != null ? await storage.read(key: 'cam_pass_$ip') : null;
+      if (ip != null && user != null && pass != null && !DetectionService.instance.isRunning) {
+        final port = int.tryParse(await storage.read(key: 'cam_port_$ip') ?? '554') ?? 554;
+        final rtsp = await storage.read(key: 'cam_rtsp_$ip') ?? '/stream1';
+        await DetectionService.instance.start(
+          ip: ip, username: user, password: pass,
+          cameraName: ip, port: port, rtspPath: rtsp,
+        );
+      }
     }
 
     // FCM tap (cloud mode)

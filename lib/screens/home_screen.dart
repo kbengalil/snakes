@@ -3,9 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:app_settings/app_settings.dart';
 import '../services/detection_service.dart';
+import '../services/wifi_watcher_service.dart';
 import 'camera_list_screen.dart';
 import 'detections_screen.dart';
 import 'login_screen.dart';
+import 'alerts_screen.dart';
 import 'stream_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,6 +19,40 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _detectEveryNFrames = DetectionService.instance.detectEveryNFrames;
+  bool _autoMonitor = false;
+  String? _homeSsid;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoMonitorState();
+  }
+
+  Future<void> _loadAutoMonitorState() async {
+    final running = await WifiWatcherService.isRunning;
+    final ssid = await WifiWatcherService.savedSsid;
+    if (mounted) setState(() { _autoMonitor = running; _homeSsid = ssid; });
+  }
+
+  Future<void> _toggleAutoMonitor(bool enable) async {
+    if (enable) {
+      final ssid = await WiFiForIoTPlugin.getSSID();
+      final cleanSsid = ssid?.replaceAll('"', '').trim();
+      if (cleanSsid == null || cleanSsid.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Connect to your home WiFi first')),
+          );
+        }
+        return;
+      }
+      await WifiWatcherService.enable(cleanSsid);
+      if (mounted) setState(() { _autoMonitor = true; _homeSsid = cleanSsid; });
+    } else {
+      await WifiWatcherService.disable();
+      if (mounted) setState(() { _autoMonitor = false; });
+    }
+  }
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
@@ -158,7 +194,55 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 240,
+              height: 56,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.notifications),
+                label: const Text('Alerts', style: TextStyle(fontSize: 18)),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AlertsScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Auto-monitor toggle
+            Container(
+              width: 240,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: _autoMonitor ? Colors.green : Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+                color: _autoMonitor ? Colors.green.shade50 : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Auto-Monitor',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Switch(
+                        value: _autoMonitor,
+                        onChanged: _toggleAutoMonitor,
+                        activeColor: Colors.green,
+                      ),
+                    ],
+                  ),
+                  if (_autoMonitor && _homeSsid != null)
+                    Text('WiFi: $_homeSsid',
+                        style: const TextStyle(fontSize: 12, color: Colors.green)),
+                  if (!_autoMonitor)
+                    const Text('Turns on when home WiFi detected',
+                        style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             // Detection frequency setting
             Container(
               width: 240,
