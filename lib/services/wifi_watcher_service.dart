@@ -8,7 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 
-const _channelId   = 'snake_wifi_watcher';
+const _channelId   = 'snake_wifi_watcher_v2';
 const _channelName = 'WiFi Camera Monitor';
 const _fgNotifId   = 900;   // foreground service notification
 const _alertId     = 901;   // "tap to start" alert
@@ -38,7 +38,7 @@ class WifiWatcherService {
         onStart: _bgEntry,
         autoStart: false,
         isForegroundMode: true,
-        notificationChannelId: _channelId,
+        notificationChannelId: _channelId, // must match _channelId const
         initialNotificationTitle: 'Snake Monitor',
         initialNotificationContent: 'Watching for home WiFi…',
         foregroundServiceNotificationId: _fgNotifId,
@@ -76,23 +76,9 @@ class WifiWatcherService {
 
 @pragma('vm:entry-point')
 void _bgEntry(ServiceInstance service) async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   const storage = FlutterSecureStorage();
 
-  // Create notification channel BEFORE anything else to avoid
-  // CannotPostForegroundServiceNotificationException on Android 8+
   final notifications = FlutterLocalNotificationsPlugin();
-  if (Platform.isAndroid) {
-    final android = notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    await android?.createNotificationChannel(const AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      importance: Importance.high,
-    ));
-  }
-
   await notifications.initialize(
     const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -105,7 +91,7 @@ void _bgEntry(ServiceInstance service) async {
 
   // Check immediately, then every 60 seconds
   await _tick(service, storage, notifications);
-  Timer.periodic(const Duration(seconds: 60),
+  Timer.periodic(const Duration(seconds: 30),
       (_) => _tick(service, storage, notifications));
 }
 
@@ -142,6 +128,8 @@ Future<void> _tick(
 
   print('[WifiWatcher] reachable=$reachable');
   if (!reachable) {
+    // Clear the "already notified" flag so we notify again next time camera comes back
+    await storage.delete(key: 'cam_found_notified');
     await _saveEvent('no_camera', lastIp);
     print('[WifiWatcher] sending no-camera notification...');
     try {
@@ -154,15 +142,18 @@ Future<void> _tick(
     return;
   }
 
-  // Camera is reachable — tell main isolate to start detection
+  // Camera is reachable — only notify once per detection session
+  final alreadyNotified = await storage.read(key: 'cam_found_notified');
+  if (alreadyNotified == 'true') return;
+  await storage.write(key: 'cam_found_notified', value: 'true');
+
   await _saveEvent('camera_found', lastIp);
   service.invoke('start_detection', {'ip': lastIp, 'port': port});
 
   // Also set a flag so the app auto-starts if it was closed and reopened
   await storage.write(key: 'auto_start_pending', value: 'true');
 
-  await _notify(notifications, _alertId,
-      'Camera Ready', 'Tap to start snake monitoring');
+  await _notify(notifications, _alertId, 'Camera Found', 'Snake monitoring started');
 }
 
 Future<void> _saveEvent(String type, String ip) async {

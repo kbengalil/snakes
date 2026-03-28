@@ -8,7 +8,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'firebase_options.dart';
-import 'services/monitoring_service.dart';
 import 'services/detection_service.dart';
 import 'services/wifi_watcher_service.dart';
 import 'screens/login_screen.dart';
@@ -46,7 +45,6 @@ void main() async {
   MediaKit.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await initMonitoringService();
   await WifiWatcherService.configure();
 
   // Save image when FCM arrives while app is in foreground

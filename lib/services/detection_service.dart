@@ -7,7 +7,6 @@ import 'package:image/image.dart' as img;
 import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 import 'yolo_detector.dart';
-import 'monitoring_service.dart';
 
 /// Singleton that owns the Player, YoloDetector, and detection loop.
 /// Runs independently of any screen — survives navigation.
@@ -25,6 +24,10 @@ class DetectionService {
   String _ip = '';
   static const double _assumedFps = 25.0;
   int detectEveryNFrames = 10;
+
+  int _consecutiveFailures = 0;
+  bool _hasHadFirstFrame = false;
+  static const _maxFailures = 20;
 
   DateTime? _lastNotification;
   final _notifications = FlutterLocalNotificationsPlugin();
@@ -51,6 +54,8 @@ class DetectionService {
     _ip = ip;
     _cameraName = cameraName;
     _running = true;
+    _consecutiveFailures = 0;
+    _hasHadFirstFrame = false;
 
     await _notifications.initialize(
       const InitializationSettings(
@@ -73,7 +78,6 @@ class DetectionService {
     const storage = FlutterSecureStorage();
     await storage.write(key: 'cam_last_ip', value: ip);
 
-    startMonitoring();
     _restartTimer();
   }
 
@@ -82,7 +86,6 @@ class DetectionService {
     _running = false;
     _timer?.cancel();
     _timer = null;
-    stopMonitoring();
     _player?.dispose();
     _player = null;
     // Wait for any in-flight compute() to finish before closing interpreter
@@ -113,7 +116,18 @@ class DetectionService {
     try {
       final bytes = await _player?.screenshot()
           .timeout(const Duration(seconds: 3), onTimeout: () => null);
-      if (!_running || bytes == null) return;
+      if (!_running) return;
+      if (bytes == null) {
+        if (_hasHadFirstFrame) {
+          _consecutiveFailures++;
+          if (_consecutiveFailures >= _maxFailures) {
+            stop();
+          }
+        }
+        return;
+      }
+      _hasHadFirstFrame = true;
+      _consecutiveFailures = 0;
 
       final result = await _detector!.detect(bytes);
       if (!_running) return;
