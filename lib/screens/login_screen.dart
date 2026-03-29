@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'home_screen.dart';
@@ -58,10 +59,33 @@ class _LoginScreenState extends State<LoginScreen> {
           Image.asset('assets/login_bg.png', fit: BoxFit.cover),
           Container(color: Colors.black.withOpacity(0.45)),
           Padding(
-            padding: const EdgeInsets.only(top: 120, left: 32, right: 32),
+            padding: const EdgeInsets.only(top: 60, left: 32, right: 32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
+                  child: RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: GoogleFonts.dancingScript(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Guard your home\n', style: TextStyle(color: Colors.green)),
+                        const TextSpan(text: 'With\n', style: TextStyle(color: Colors.green)),
+                        TextSpan(text: 'Snakes Detector', style: GoogleFonts.rancho(color: Colors.red, fontSize: 36, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 if (_loading)
                   const CircularProgressIndicator()
                 else

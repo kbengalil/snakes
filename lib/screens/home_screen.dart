@@ -97,7 +97,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: GoogleFonts.ranchoTextTheme(Theme.of(context).textTheme),
+      ),
+      child: Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -117,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(color: Colors.black, width: 2),
               ),
               child: Text(
-                'Snake Detector',
+                'Welcome',
                 style: GoogleFonts.dancingScript(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
@@ -177,22 +181,50 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ] else ...[
-              ElevatedButton(
-                onPressed: _goToLiveStream,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: const CircleBorder(),
-                  padding: const EdgeInsets.all(28),
-                ),
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.videocam, size: 32),
-                    SizedBox(height: 4),
-                    Text('Start', style: TextStyle(fontSize: 16)),
-                  ],
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _goToLiveStream,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: const CircleBorder(side: BorderSide(color: Colors.black, width: 2)),
+                      padding: const EdgeInsets.all(28),
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.videocam, size: 32),
+                        SizedBox(height: 4),
+                        Text('Start', style: TextStyle(fontSize: 26)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(color: Colors.black, width: 2),
+                      color: _autoMonitor ? Colors.green : Colors.red,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Auto', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+                        Switch(
+                          value: _autoMonitor,
+                          onChanged: _toggleAutoMonitor,
+                          activeColor: Colors.white,
+                          activeTrackColor: Colors.green.shade800,
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: Colors.red.shade800,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: 20),
@@ -201,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 56,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.notifications),
-                label: const Text('Notifications', style: TextStyle(fontSize: 18)),
+                label: const Text('Notifications', style: TextStyle(fontSize: 30)),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const NotificationsScreen()),
@@ -212,48 +244,12 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(
               width: 180,
               height: 56,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.science),
-                label: const Text('Test my app', style: TextStyle(fontSize: 18)),
+              child: ElevatedButton(
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const TestDetectionScreen()),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Auto-monitor toggle
-            Container(
-              width: 220,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: _autoMonitor ? Colors.green : Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-                color: _autoMonitor ? Colors.green.shade50 : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Auto-Monitor',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Switch(
-                        value: _autoMonitor,
-                        onChanged: _toggleAutoMonitor,
-                        activeColor: Colors.green,
-                      ),
-                    ],
-                  ),
-                  if (_autoMonitor && _homeSsid != null)
-                    Text('WiFi: $_homeSsid',
-                        style: const TextStyle(fontSize: 12, color: Colors.green)),
-                  if (!_autoMonitor)
-                    const Text('Turns on when home WiFi detected',
-                        style: TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
+                child: const Text('Test my app', style: TextStyle(fontSize: 30)),
               ),
             ),
           ],
@@ -261,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       ),
         ],
+      ),
       ),
     );
   }
