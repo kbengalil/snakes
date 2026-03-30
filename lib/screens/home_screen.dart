@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadAutoMonitorState();
   }
 
+
   Future<void> _loadAutoMonitorState() async {
     final running = await WifiWatcherService.isRunning;
     final ssid = await WifiWatcherService.savedSsid;
@@ -113,19 +114,27 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black, width: 2),
-              ),
-              child: Text(
-                'Welcome',
-                style: GoogleFonts.dancingScript(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
+            GestureDetector(
+              onTap: () {
+                // TODO: open guide screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Guide coming soon!')),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: Text(
+                  'Press to view guide',
+                  style: GoogleFonts.rancho(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
               ),
             ),

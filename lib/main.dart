@@ -45,7 +45,7 @@ void main() async {
   MediaKit.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await WifiWatcherService.configure();
+  WifiWatcherService.configure();
 
   // Save image when FCM arrives while app is in foreground
   FirebaseMessaging.onMessage.listen(_saveDetectionFromMessage);
