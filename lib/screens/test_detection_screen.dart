@@ -90,7 +90,10 @@ class _ImageTestScreen extends StatefulWidget {
 }
 
 class _ImageTestScreenState extends State<_ImageTestScreen> {
-  Uint8List? _annotatedBytes;
+  Uint8List? _imageBytes;
+  List<DetectionBox> _boxes = [];
+  double _imgW = 1;
+  double _imgH = 1;
   bool _loading = true;
   String _status = 'Running detection...';
 
@@ -106,28 +109,13 @@ class _ImageTestScreenState extends State<_ImageTestScreen> {
       await detector.initialize();
       final bytes = await File(widget.filePath).readAsBytes();
       final result = await detector.detect(bytes);
-
-      // Draw boxes onto the image
-      final annotated = await Future(() {
-        final decoded = img.decodeImage(bytes);
-        if (decoded == null) return bytes;
-        for (final box in result.boxes) {
-          final x1 = ((box.cx - box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-          final y1 = ((box.cy - box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-          final x2 = ((box.cx + box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-          final y2 = ((box.cy + box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-          img.drawRect(decoded, x1: x1, y1: y1, x2: x2, y2: y2,
-              color: img.ColorRgb8(255, 0, 0), thickness: 3);
-          img.drawString(decoded, box.label,
-              font: img.arial14, x: x1 + 2, y: y1 + 2,
-              color: img.ColorRgb8(255, 0, 0));
-        }
-        return Uint8List.fromList(img.encodeJpg(decoded, quality: 90));
-      });
-
+      final decoded = img.decodeImage(bytes);
       if (mounted) {
         setState(() {
-          _annotatedBytes = annotated;
+          _imageBytes = bytes;
+          _boxes = result.boxes;
+          _imgW = decoded?.width.toDouble() ?? 1;
+          _imgH = decoded?.height.toDouble() ?? 1;
           _loading = false;
           _status = result.detected
               ? '${result.boxes.length} detection(s) found!'
@@ -158,9 +146,18 @@ class _ImageTestScreenState extends State<_ImageTestScreen> {
           : Stack(
               fit: StackFit.expand,
               children: [
-                if (_annotatedBytes != null)
+                if (_imageBytes != null)
                   InteractiveViewer(
-                    child: Image.memory(_annotatedBytes!, fit: BoxFit.contain),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(_imageBytes!, fit: BoxFit.contain),
+                        if (_boxes.isNotEmpty)
+                          CustomPaint(
+                            painter: _BoxPainter(_boxes, videoWidth: _imgW, videoHeight: _imgH),
+                          ),
+                      ],
+                    ),
                   ),
                 Positioned(
                   bottom: 16,
@@ -339,10 +336,10 @@ class _BoxPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.red
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..strokeWidth = 6;
 
     const labelStyle = TextStyle(
-        color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold);
+        color: Colors.red, fontSize: 26, fontWeight: FontWeight.bold);
 
     for (final box in boxes) {
       final left   = videoRect.left + (box.cx - box.w / 2) * videoRect.width;

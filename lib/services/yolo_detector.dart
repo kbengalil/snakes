@@ -55,26 +55,12 @@ class YoloDetector {
   static const int numAnchors = 2100;
   static const double _nmsIouThreshold = 0.45;
 
-  static const List<String> classes = [
-    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train',
-    'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
-    'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-    'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag',
-    'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite',
-    'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
-    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon',
-    'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
-    'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant',
-    'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-    'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
-    'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
-    'hair drier', 'toothbrush',
-  ];
+  static const List<String> classes = ['Snake'];
 
   late Interpreter _interpreter;
 
   Future<void> initialize() async {
-    _interpreter = await Interpreter.fromAsset('assets/models/yolo11n_float32.tflite');
+    _interpreter = await Interpreter.fromAsset('assets/models/Best-28-3_float32.tflite');
     _interpreter.allocateTensors();
     debugPrint('YOLO input shape: ${_interpreter.getInputTensor(0).shape}');
     debugPrint('YOLO output shape: ${_interpreter.getOutputTensor(0).shape}');
@@ -185,8 +171,8 @@ DetectionResult _parseOutput(List<List<double>> output, double confidenceThresho
     final h  = output[3][i];
     final cls = bestClass[i]!;
     final label = cls < YoloDetector.classes.length
-        ? '${YoloDetector.classes[cls]} ${(bestScore[i]! * 100).toStringAsFixed(0)}%'
-        : 'cls$cls ${(bestScore[i]! * 100).toStringAsFixed(0)}%';
+        ? YoloDetector.classes[cls]
+        : 'cls$cls';
     return DetectionBox(cx: cx, cy: cy, w: w, h: h, confidence: bestScore[i]!, label: label);
   }).toList();
 
