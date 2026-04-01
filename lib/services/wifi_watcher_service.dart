@@ -89,10 +89,19 @@ void _bgEntry(ServiceInstance service) async {
     service.on('stop').listen((_) => service.stopSelf());
   }
 
-  // Check immediately, then every 60 seconds
+  bool ticking = false;
+
+  // Check immediately, then every 30 seconds
   await _tick(service, storage, notifications);
-  Timer.periodic(const Duration(seconds: 30),
-      (_) => _tick(service, storage, notifications));
+  Timer.periodic(const Duration(seconds: 30), (_) async {
+    if (ticking) return;
+    ticking = true;
+    try {
+      await _tick(service, storage, notifications);
+    } finally {
+      ticking = false;
+    }
+  });
 }
 
 Future<void> _tick(

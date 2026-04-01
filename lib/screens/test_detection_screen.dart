@@ -6,7 +6,9 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/yolo_detector.dart';
+import 'detections_screen.dart';
 
 class TestDetectionScreen extends StatefulWidget {
   const TestDetectionScreen({super.key});
@@ -202,14 +204,13 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
   YoloDetector? _detector;
   Timer? _timer;
   bool _detecting = false;
+  bool _done = false;
+  Duration _lastPosition = Duration.zero;
 
-  List<DetectionBox> _boxes = [];
-  double _videoWidth = 1920;
-  double _videoHeight = 1080;
+  int _framesScanned = 0;
+  int _detectionsFound = 0;
   String _status = 'Loading...';
-
-  StreamSubscription? _widthSub;
-  StreamSubscription? _heightSub;
+  DateTime? _lastSaved;
 
   @override
   void initState() {
@@ -220,49 +221,110 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
   Future<void> _init() async {
     _player = Player();
     _controller = VideoController(_player);
-
     _detector = YoloDetector();
     await _detector!.initialize();
-
     await _player.open(Media('file://${widget.filePath}'));
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) setState(() => _status = 'Scanning...');
+    _timer = Timer.periodic(const Duration(milliseconds: 1000), _onTick);
 
-    _widthSub = _player.stream.width.listen((w) {
-      if (w != null && w > 0 && mounted) {
-        setState(() { _videoWidth = w.toDouble(); _status = 'Watching...'; });
-      }
+    _player.stream.completed.listen((completed) {
+      if (completed && _framesScanned > 0) _finish();
     });
-    _heightSub = _player.stream.height.listen((h) {
-      if (h != null && h > 0 && mounted) setState(() => _videoHeight = h.toDouble());
-    });
-
-    _timer = Timer.periodic(const Duration(milliseconds: 400), _onTick);
   }
 
   Future<void> _onTick(Timer t) async {
-    if (_detecting) return;
+    if (_detecting || _done) return;
     _detecting = true;
     try {
       final bytes = await _player.screenshot()
           .timeout(const Duration(seconds: 3), onTimeout: () => null);
-      if (bytes == null || !mounted) return;
-      final result = await _detector!.detect(bytes);
       if (!mounted) return;
-      setState(() {
-        _boxes = result.boxes;
-        _status = result.detected ? 'Detected!' : 'Watching...';
-      });
+      if (bytes == null) {
+        if (mounted) setState(() => _status = 'screenshot null (frame $_framesScanned)');
+        return;
+      }
+      // skip if position hasn't advanced
+      final pos = _player.state.position;
+      if (pos == _lastPosition) return;
+      _lastPosition = pos;
+      _framesScanned++;
+      final result = await _detector!.detect(bytes);
+      if (result.detected) {
+        final now = DateTime.now();
+        if (_lastSaved == null || now.difference(_lastSaved!) >= const Duration(seconds: 3)) {
+          _lastSaved = now;
+          _detectionsFound++;
+          await _saveDetection(bytes, result.boxes);
+        }
+      }
+      if (mounted) setState(() => _status = 'frame $_framesScanned | found $_detectionsFound');
     } catch (_) {
     } finally {
       _detecting = false;
     }
   }
 
+  Future<void> _saveDetection(Uint8List bytes, List<DetectionBox> boxes) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final detectionsDir = Directory('${dir.path}/detections');
+    await detectionsDir.create(recursive: true);
+
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return;
+
+    for (final box in boxes) {
+      final x1 = ((box.cx - box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
+      final y1 = ((box.cy - box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
+      final x2 = ((box.cx + box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
+      final y2 = ((box.cy + box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
+      img.drawRect(decoded, x1: x1, y1: y1, x2: x2, y2: y2,
+          color: img.ColorRgb8(255, 0, 0), thickness: 12);
+    }
+
+    final now = DateTime.now();
+    String p(int n) => n.toString().padLeft(2, '0');
+    final name = 'detection_${now.year}${p(now.month)}${p(now.day)}_${p(now.hour)}${p(now.minute)}${p(now.second)}_${now.millisecond}.jpg';
+    await File('${detectionsDir.path}/$name')
+        .writeAsBytes(img.encodeJpg(decoded, quality: 90));
+  }
+
+  void _finish() {
+    if (_done) return;
+    _done = true;
+    _timer?.cancel();
+    _player.dispose();
+    _detector?.dispose();
+    _detector = null;
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Done'),
+        content: Text('Scanned $_framesScanned frames\nSaved $_detectionsFound detection(s)'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const DetectionsScreen()));
+            },
+            child: const Text('View detections'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
-    _widthSub?.cancel();
-    _heightSub?.cancel();
-    _player.dispose();
+    if (!_done) { _player.dispose(); }
     _detector?.dispose();
     super.dispose();
   }
@@ -270,36 +332,25 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Video Detection')),
-      backgroundColor: Colors.black,
+      appBar: AppBar(title: const Text('Video Scan')),
       body: Stack(
         fit: StackFit.expand,
         children: [
           Video(controller: _controller, controls: NoVideoControls),
-          if (_boxes.isNotEmpty)
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _BoxPainter(_boxes,
-                    videoWidth: _videoWidth, videoHeight: _videoHeight),
-              ),
-            ),
           Positioned(
-            bottom: 16,
+            top: 24,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  _status,
-                  style: TextStyle(
-                    color: _status.contains('Detected') ? Colors.red : Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: const Text(
+                  'Please wait until video ends',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ),

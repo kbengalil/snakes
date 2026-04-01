@@ -67,7 +67,7 @@ class YoloDetector {
   }
 
   /// Runs detection in a background isolate — does not block the UI thread.
-  Future<DetectionResult> detect(Uint8List imageBytes, {double confidenceThreshold = 0.5}) {
+  Future<DetectionResult> detect(Uint8List imageBytes, {double confidenceThreshold = 0.7}) {
     return compute(_runInference, _InferenceInput(
       interpreterAddress: _interpreter.address,
       imageBytes: imageBytes,
@@ -89,16 +89,24 @@ DetectionResult _runInference(_InferenceInput input) {
   final image = img.decodeImage(input.imageBytes);
   if (image == null) return const DetectionResult(boxes: []);
 
-  final resized = img.copyResize(image, width: YoloDetector.inputSize, height: YoloDetector.inputSize);
+  // Letterbox: resize keeping aspect ratio, pad remainder with gray (114,114,114)
+  final scale = YoloDetector.inputSize / max(image.width, image.height);
+  final scaledW = (image.width * scale).round();
+  final scaledH = (image.height * scale).round();
+  final resized = img.copyResize(image, width: scaledW, height: scaledH);
+  final padX = (YoloDetector.inputSize - scaledW) ~/ 2;
+  final padY = (YoloDetector.inputSize - scaledH) ~/ 2;
 
   final flat = Float32List(YoloDetector.inputSize * YoloDetector.inputSize * 3);
-  int idx = 0;
-  for (int y = 0; y < YoloDetector.inputSize; y++) {
-    for (int x = 0; x < YoloDetector.inputSize; x++) {
+  // Fill with gray padding value
+  flat.fillRange(0, flat.length, 114 / 255.0);
+  for (int y = 0; y < scaledH; y++) {
+    for (int x = 0; x < scaledW; x++) {
       final pixel = resized.getPixel(x, y);
-      flat[idx++] = pixel.r / 255.0;
-      flat[idx++] = pixel.g / 255.0;
-      flat[idx++] = pixel.b / 255.0;
+      final idx = ((y + padY) * YoloDetector.inputSize + (x + padX)) * 3;
+      flat[idx]     = pixel.r / 255.0;
+      flat[idx + 1] = pixel.g / 255.0;
+      flat[idx + 2] = pixel.b / 255.0;
     }
   }
 
@@ -110,6 +118,7 @@ DetectionResult _runInference(_InferenceInput input) {
       })),
   ];
 
+
   final numClasses = YoloDetector.classes.length;
   final output = [
     List.generate(4 + numClasses, (_) => List<double>.filled(YoloDetector.numAnchors, 0.0)),
@@ -117,7 +126,18 @@ DetectionResult _runInference(_InferenceInput input) {
 
   interpreter.run(inputTensor, output);
 
-  return _parseOutput(output[0], input.confidenceThreshold);
+  final result = _parseOutput(output[0], input.confidenceThreshold);
+
+  // De-letterbox: convert coordinates from padded 320x320 space back to original image space
+  final correctedBoxes = result.boxes.map((box) {
+    final cx = (box.cx * YoloDetector.inputSize - padX) / scaledW;
+    final cy = (box.cy * YoloDetector.inputSize - padY) / scaledH;
+    final w  = box.w  * YoloDetector.inputSize / scaledW;
+    final h  = box.h  * YoloDetector.inputSize / scaledH;
+    return DetectionBox(cx: cx, cy: cy, w: w, h: h, confidence: box.confidence, label: box.label);
+  }).toList();
+
+  return DetectionResult(boxes: correctedBoxes);
 }
 
 // ============================================================================

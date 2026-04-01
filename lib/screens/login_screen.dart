@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       children: [
                         const TextSpan(text: 'Welcome!\n', style: TextStyle(color: Colors.green)),
-                        TextSpan(text: 'now you can guard your home with\n', style: GoogleFonts.rancho(color: Colors.green, fontSize: 36, fontWeight: FontWeight.bold)),
+                        TextSpan(text: 'You can now guard your home with\n', style: GoogleFonts.rancho(color: Colors.green, fontSize: 36, fontWeight: FontWeight.bold)),
                         TextSpan(text: 'Snakes Detector', style: GoogleFonts.rancho(color: Colors.red, fontSize: 36, fontWeight: FontWeight.bold)),
                       ],
                     ),
