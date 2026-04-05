@@ -6,7 +6,6 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:path_provider/path_provider.dart';
 import '../services/yolo_detector.dart';
 import 'detections_screen.dart';
 
@@ -210,7 +209,7 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
   int _framesScanned = 0;
   int _detectionsFound = 0;
   String _status = 'Loading...';
-  DateTime? _lastSaved;
+  List<DetectionBox> _boxes = [];
 
   @override
   void initState() {
@@ -229,7 +228,7 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
     _timer = Timer.periodic(const Duration(milliseconds: 1000), _onTick);
 
     _player.stream.completed.listen((completed) {
-      if (completed && _framesScanned > 0) _finish();
+      if (completed) _finish();
     });
   }
 
@@ -250,59 +249,33 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
       _lastPosition = pos;
       _framesScanned++;
       final result = await _detector!.detect(bytes);
-      if (result.detected) {
-        final now = DateTime.now();
-        if (_lastSaved == null || now.difference(_lastSaved!) >= const Duration(seconds: 3)) {
-          _lastSaved = now;
-          _detectionsFound++;
-          await _saveDetection(bytes, result.boxes);
-        }
-      }
-      if (mounted) setState(() => _status = 'frame $_framesScanned | found $_detectionsFound');
+      if (result.detected) _detectionsFound++;
+      if (mounted) setState(() {
+        _boxes = result.boxes;
+        _status = 'frame $_framesScanned | found $_detectionsFound';
+      });
     } catch (_) {
     } finally {
       _detecting = false;
     }
   }
 
-  Future<void> _saveDetection(Uint8List bytes, List<DetectionBox> boxes) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final detectionsDir = Directory('${dir.path}/detections');
-    await detectionsDir.create(recursive: true);
 
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return;
-
-    for (final box in boxes) {
-      final x1 = ((box.cx - box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-      final y1 = ((box.cy - box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-      final x2 = ((box.cx + box.w / 2) * decoded.width).round().clamp(0, decoded.width - 1);
-      final y2 = ((box.cy + box.h / 2) * decoded.height).round().clamp(0, decoded.height - 1);
-      img.drawRect(decoded, x1: x1, y1: y1, x2: x2, y2: y2,
-          color: img.ColorRgb8(255, 0, 0), thickness: 12);
-    }
-
-    final now = DateTime.now();
-    String p(int n) => n.toString().padLeft(2, '0');
-    final name = 'detection_${now.year}${p(now.month)}${p(now.day)}_${p(now.hour)}${p(now.minute)}${p(now.second)}_${now.millisecond}.jpg';
-    await File('${detectionsDir.path}/$name')
-        .writeAsBytes(img.encodeJpg(decoded, quality: 90));
-  }
 
   void _finish() {
     if (_done) return;
     _done = true;
     _timer?.cancel();
-    _player.dispose();
     _detector?.dispose();
     _detector = null;
     if (!mounted) return;
+    Future.microtask(() => _player.dispose());
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Done'),
-        content: Text('Scanned $_framesScanned frames\nSaved $_detectionsFound detection(s)'),
+        content: Text('Scanned $_framesScanned frames\nDetections found: $_detectionsFound'),
         actions: [
           TextButton(
             onPressed: () {
@@ -337,6 +310,13 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
         fit: StackFit.expand,
         children: [
           Video(controller: _controller, controls: NoVideoControls),
+          if (_boxes.isNotEmpty)
+            CustomPaint(
+              painter: _BoxPainter(_boxes,
+                videoWidth: _player.state.width?.toDouble() ?? 1280,
+                videoHeight: _player.state.height?.toDouble() ?? 720,
+              ),
+            ),
           Positioned(
             top: 24,
             left: 0,

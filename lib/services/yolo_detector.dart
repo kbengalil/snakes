@@ -60,7 +60,7 @@ class YoloDetector {
   late Interpreter _interpreter;
 
   Future<void> initialize() async {
-    _interpreter = await Interpreter.fromAsset('assets/models/Best-28-3_float32.tflite');
+    _interpreter = await Interpreter.fromAsset('assets/models/best_float32.tflite');
     _interpreter.allocateTensors();
     debugPrint('YOLO input shape: ${_interpreter.getInputTensor(0).shape}');
     debugPrint('YOLO output shape: ${_interpreter.getOutputTensor(0).shape}');
