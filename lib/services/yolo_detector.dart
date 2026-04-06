@@ -67,7 +67,7 @@ class YoloDetector {
   }
 
   /// Runs detection in a background isolate — does not block the UI thread.
-  Future<DetectionResult> detect(Uint8List imageBytes, {double confidenceThreshold = 0.7}) {
+  Future<DetectionResult> detect(Uint8List imageBytes, {double confidenceThreshold = 0.5}) {
     return compute(_runInference, _InferenceInput(
       interpreterAddress: _interpreter.address,
       imageBytes: imageBytes,

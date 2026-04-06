@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../services/yolo_detector.dart';
-import 'detections_screen.dart';
+import 'home_screen.dart' show detectionIntervalMs;
 
 class TestDetectionScreen extends StatefulWidget {
   const TestDetectionScreen({super.key});
@@ -204,7 +204,6 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
   Timer? _timer;
   bool _detecting = false;
   bool _done = false;
-  Duration _lastPosition = Duration.zero;
 
   int _framesScanned = 0;
   int _detectionsFound = 0;
@@ -225,7 +224,7 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
     await _player.open(Media('file://${widget.filePath}'));
     await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) setState(() => _status = 'Scanning...');
-    _timer = Timer.periodic(const Duration(milliseconds: 1000), _onTick);
+    _timer = Timer.periodic(Duration(milliseconds: detectionIntervalMs), _onTick);
 
     _player.stream.completed.listen((completed) {
       if (completed) _finish();
@@ -236,17 +235,14 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
     if (_detecting || _done) return;
     _detecting = true;
     try {
+      await _player.pause();
       final bytes = await _player.screenshot()
           .timeout(const Duration(seconds: 3), onTimeout: () => null);
       if (!mounted) return;
       if (bytes == null) {
-        if (mounted) setState(() => _status = 'screenshot null (frame $_framesScanned)');
+        if (!_done) await _player.play();
         return;
       }
-      // skip if position hasn't advanced
-      final pos = _player.state.position;
-      if (pos == _lastPosition) return;
-      _lastPosition = pos;
       _framesScanned++;
       final result = await _detector!.detect(bytes);
       if (result.detected) _detectionsFound++;
@@ -254,7 +250,9 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
         _boxes = result.boxes;
         _status = 'frame $_framesScanned | found $_detectionsFound';
       });
+      if (!_done) await _player.play();
     } catch (_) {
+      if (!_done) _player.play();
     } finally {
       _detecting = false;
     }
@@ -270,28 +268,7 @@ class _VideoTestScreenState extends State<_VideoTestScreen> {
     _detector = null;
     if (!mounted) return;
     Future.microtask(() => _player.dispose());
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Done'),
-        content: Text('Scanned $_framesScanned frames\nDetections found: $_detectionsFound'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => const DetectionsScreen()));
-            },
-            child: const Text('View detections'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+    Navigator.pop(context);
   }
 
   @override

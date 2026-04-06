@@ -18,6 +18,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+int detectionIntervalMs = 1000;
+
 class _HomeScreenState extends State<HomeScreen> {
   bool _autoMonitor = false;
   String? _homeSsid;
