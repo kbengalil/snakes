@@ -5,3 +5,4 @@
 3. Removed `await` from `DetectionService.instance.start()` in `_checkNotificationLaunch()` — was blocking app load while connecting to camera
 4. Added 3-second timeouts to all `FlutterSecureStorage` reads in `_checkNotificationLaunch()` — Android keystore can deadlock and hang indefinitely
 5. Added `_ticking` guard to background service `_tick()` — without it, if a tick hangs (e.g. WiFi check stalls when device sleeps), the 30-second timer keeps firing new ticks. After 20 minutes, dozens of concurrent ticks pile up all reading from storage simultaneously, blocking the main app from accessing storage on next open
+6. Delayed `_checkNotificationLaunch()` by 2 seconds using `Future.delayed` in `MyApp.initState()` — it was called immediately on startup, blocking the login screen from rendering while reading from `FlutterSecureStorage` (which can hang when Android keystore is locked after device idle)

@@ -78,7 +78,8 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkNotificationLaunch();
+    // Delay so login screen renders first before any blocking storage reads
+    Future.delayed(const Duration(seconds: 2), _checkNotificationLaunch);
   }
 
   Future<void> _checkNotificationLaunch() async {
