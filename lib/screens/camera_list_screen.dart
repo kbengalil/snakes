@@ -12,7 +12,7 @@ class CameraListScreen extends StatefulWidget {
 }
 
 class _CameraListScreenState extends State<CameraListScreen> {
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   List<DiscoveredDevice> _cameras = [];
   bool _loading = true;
   String? _error;

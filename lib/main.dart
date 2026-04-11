@@ -53,16 +53,19 @@ void main() async {
   WifiWatcherService.onStartDetection.listen((data) async {
     final ip = data?['ip'] as String?;
     if (ip == null || DetectionService.instance.isRunning) return;
-    const storage = FlutterSecureStorage();
-    final user  = await storage.read(key: 'cam_user_$ip');
-    final pass  = await storage.read(key: 'cam_pass_$ip');
-    final port  = int.tryParse(await storage.read(key: 'cam_port_$ip') ?? '554') ?? 554;
-    final rtsp  = await storage.read(key: 'cam_rtsp_$ip') ?? '/stream1';
-    if (user == null || pass == null) return;
-    await DetectionService.instance.start(
-      ip: ip, username: user, password: pass,
-      cameraName: ip, port: port, rtspPath: rtsp,
-    );
+    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+    const t = Duration(seconds: 3);
+    try {
+      final user  = await storage.read(key: 'cam_user_$ip').timeout(t, onTimeout: () => null);
+      final pass  = await storage.read(key: 'cam_pass_$ip').timeout(t, onTimeout: () => null);
+      final port  = int.tryParse(await storage.read(key: 'cam_port_$ip').timeout(t, onTimeout: () => null) ?? '554') ?? 554;
+      final rtsp  = await storage.read(key: 'cam_rtsp_$ip').timeout(t, onTimeout: () => null) ?? '/stream1';
+      if (user == null || pass == null) return;
+      DetectionService.instance.start(
+        ip: ip, username: user, password: pass,
+        cameraName: ip, port: port, rtspPath: rtsp,
+      );
+    } catch (_) {}
   });
   runApp(const MyApp());
 }
@@ -83,11 +86,14 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _checkNotificationLaunch() async {
+    const t = Duration(seconds: 3);
     // Local notification tap (mobile mode)
     final plugin = FlutterLocalNotificationsPlugin();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await plugin.initialize(const InitializationSettings(android: android));
-    final details = await plugin.getNotificationAppLaunchDetails();
+    await plugin.initialize(const InitializationSettings(android: android))
+        .timeout(t, onTimeout: () {});
+    final details = await plugin.getNotificationAppLaunchDetails()
+        .timeout(t, onTimeout: () => null);
     if (details?.didNotificationLaunchApp == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         navigatorKey.currentState?.push(
@@ -98,7 +104,7 @@ class _MyAppState extends State<MyApp> {
 
     // Auto-start detection if WiFi watcher flagged it
     try {
-      const storage = FlutterSecureStorage();
+      const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
       const t = Duration(seconds: 3);
       final pending = await storage.read(key: 'auto_start_pending').timeout(t, onTimeout: () => null);
       if (pending == 'true') {
@@ -123,7 +129,8 @@ class _MyAppState extends State<MyApp> {
         MaterialPageRoute(builder: (_) => const DetectionsScreen()),
       );
     });
-    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    final initial = await FirebaseMessaging.instance.getInitialMessage()
+        .timeout(t, onTimeout: () => null);
     if (initial != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         navigatorKey.currentState?.push(

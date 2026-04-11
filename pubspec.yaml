@@ -52,6 +52,7 @@ dependencies:
   app_settings: ^5.1.1
   flutter_background_service: ^5.0.7
   image_picker: ^1.1.2
+  photo_manager: ^3.9.0
 
 dev_dependencies:
   flutter_test:

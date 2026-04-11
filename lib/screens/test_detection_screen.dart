@@ -74,7 +74,7 @@ class _TestDetectionScreenState extends State<TestDetectionScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _VideoTestScreen(filePath: file.path),
+        builder: (_) => VideoTestScreen(filePath: file.path),
       ),
     );
   }
@@ -189,15 +189,15 @@ class _ImageTestScreenState extends State<_ImageTestScreen> {
 
 // ─── Video Test ───────────────────────────────────────────────────────────────
 
-class _VideoTestScreen extends StatefulWidget {
+class VideoTestScreen extends StatefulWidget {
   final String filePath;
-  const _VideoTestScreen({required this.filePath});
+  const VideoTestScreen({super.key, required this.filePath});
 
   @override
-  State<_VideoTestScreen> createState() => _VideoTestScreenState();
+  State<VideoTestScreen> createState() => _VideoTestScreenState();
 }
 
-class _VideoTestScreenState extends State<_VideoTestScreen> {
+class _VideoTestScreenState extends State<VideoTestScreen> {
   late final Player _player;
   late final VideoController _controller;
   YoloDetector? _detector;

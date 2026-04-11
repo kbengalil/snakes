@@ -75,7 +75,7 @@ class DetectionService {
     await _player!.open(Media('rtsp://$u:$p@$ip:$port$rtspPath'));
 
     // Remember this camera so the WiFi watcher can reconnect automatically
-    const storage = FlutterSecureStorage();
+    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
     await storage.write(key: 'cam_last_ip', value: ip);
 
     _restartTimer();

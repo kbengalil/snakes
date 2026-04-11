@@ -74,7 +74,7 @@ class _StreamScreenState extends State<StreamScreen> {
 
     // Clear saved credentials so user is prompted again next time
     final ip = DetectionService.instance.ip;
-    const storage = FlutterSecureStorage();
+    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
     await storage.delete(key: 'cam_user_$ip');
     await storage.delete(key: 'cam_pass_$ip');
 

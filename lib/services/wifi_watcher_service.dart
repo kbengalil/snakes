@@ -49,7 +49,7 @@ class WifiWatcherService {
 
   /// Enable auto-monitoring for [ssid]. Starts the background service.
   static Future<void> enable(String ssid) async {
-    const storage = FlutterSecureStorage();
+    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
     await storage.write(key: 'home_wifi_ssid', value: ssid);
     await storage.write(key: 'auto_monitor_enabled', value: 'true');
     await _svc.startService();
@@ -57,7 +57,7 @@ class WifiWatcherService {
 
   /// Disable auto-monitoring and stop the background service.
   static Future<void> disable() async {
-    const storage = FlutterSecureStorage();
+    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
     await storage.write(key: 'auto_monitor_enabled', value: 'false');
     _svc.invoke('stop');
   }
@@ -65,7 +65,7 @@ class WifiWatcherService {
   static Future<bool> get isRunning => _svc.isRunning();
 
   static Future<String?> get savedSsid async =>
-      const FlutterSecureStorage().read(key: 'home_wifi_ssid');
+      const FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true)).read(key: 'home_wifi_ssid');
 
   /// Listen for start_detection events from the background service.
   static Stream<Map<String, dynamic>?> get onStartDetection =>
@@ -76,7 +76,7 @@ class WifiWatcherService {
 
 @pragma('vm:entry-point')
 void _bgEntry(ServiceInstance service) async {
-  const storage = FlutterSecureStorage();
+  const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
 
   final notifications = FlutterLocalNotificationsPlugin();
   await notifications.initialize(
