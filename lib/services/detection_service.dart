@@ -70,6 +70,7 @@ class DetectionService {
     await _detector!.initialize();
 
     _player = Player();
+    await _player!.setVolume(0);
     final u = Uri.encodeComponent(username);
     final p = Uri.encodeComponent(password);
     await _player!.open(Media('rtsp://$u:$p@$ip:$port$rtspPath'));

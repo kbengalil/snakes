@@ -23,7 +23,7 @@ class _StreamScreenState extends State<StreamScreen> {
   List<DetectionBox> _boxes = [];
   double _videoWidth = 1920;
   double _videoHeight = 1080;
-  String _status = 'Connecting...';
+  String _status = 'Please wait for live stream...';
   bool _connectionFailed = false;
 
   @override
@@ -129,23 +129,26 @@ class _StreamScreenState extends State<StreamScreen> {
                     videoWidth: _videoWidth, videoHeight: _videoHeight),
               ),
             ),
+          if (_status == 'Please wait for live stream...' || _status.contains('failed'))
           Positioned(
-            bottom: 16,
+            top: 80,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   _status,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
+                    fontSize: 24,
                     color: _status.contains('Detected')
                         ? Colors.red
-                        : _status.contains('failed') || _status.contains('Connecting')
+                        : _status.contains('failed') || _status.contains('Please wait')
                             ? Colors.orange
                             : Colors.green,
                     fontWeight: FontWeight.bold,

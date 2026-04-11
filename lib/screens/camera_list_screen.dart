@@ -119,7 +119,6 @@ class _CameraListScreenState extends State<CameraListScreen> {
   }
 
   Future<void> _openStream(DiscoveredDevice device, String user, String pass) async {
-    // Start background detection service
     await DetectionService.instance.start(
       ip: device.ip,
       port: device.rtspPort,
@@ -180,11 +179,6 @@ class _CameraListScreenState extends State<CameraListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddManuallyDialog,
-        tooltip: 'Add by IP',
-        child: const Icon(Icons.add),
-      ),
       body: _buildBody(),
     );
   }
@@ -193,11 +187,16 @@ class _CameraListScreenState extends State<CameraListScreen> {
     if (_loading) {
       return const Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            SizedBox(height: 80),
             CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Scanning network for cameras...'),
+            SizedBox(height: 24),
+            Text(
+              'Please wait while\nsearching for camera...',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       );
