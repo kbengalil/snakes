@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:app_settings/app_settings.dart';
 import 'video_picker_screen.dart';
+import 'guide_screen.dart';
 import '../services/detection_service.dart';
 import '../services/wifi_watcher_service.dart';
 import 'camera_list_screen.dart';
@@ -144,12 +145,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           children: [
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () {
-                // TODO: open guide screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Guide coming soon!')),
-                );
-              },
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GuideScreen()),
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
