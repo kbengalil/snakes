@@ -8,7 +8,7 @@ import 'guide_screen.dart';
 import '../services/detection_service.dart';
 import '../services/wifi_watcher_service.dart';
 import 'camera_list_screen.dart';
-import 'notifications_screen.dart';
+import '../screens/detections_screen.dart';
 import 'login_screen.dart';
 import 'test_detection_screen.dart';
 import 'stream_screen.dart';
@@ -167,122 +167,106 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
             const SizedBox(height: 32),
-            // Monitoring status banner
-            if (DetectionService.instance.isRunning) ...[
-              Container(
-                width: 320,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  border: Border.all(color: Colors.green),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: FadeTransition(
-                  opacity: _blinkAnimation,
-                  child: Text(
-                    'Running Snakes Detection',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 30),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.stop, color: Colors.red),
-                  label: const Text('Stop', style: TextStyle(fontSize: 30)),
-                  style: ElevatedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red, width: 2),
-                    foregroundColor: Colors.red,
-                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  ),
-                  onPressed: () async {
-                    await DetectionService.instance.stop();
-                    setState(() {});
-                  },
-                ),
-              ),
-            ] else ...[
-              Row(
+            Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
-                    onPressed: _goToLiveStream,
+                    onPressed: DetectionService.instance.isRunning
+                        ? () async {
+                            await DetectionService.instance.stop();
+                            setState(() {});
+                          }
+                        : _goToLiveStream,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: DetectionService.instance.isRunning ? Colors.red : Colors.green,
                       foregroundColor: Colors.white,
                       shape: const CircleBorder(side: BorderSide(color: Colors.black, width: 2)),
                       padding: const EdgeInsets.all(28),
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.videocam, size: 32),
-                        SizedBox(height: 4),
-                        Text('Start', style: TextStyle(fontSize: 26)),
+                        const Icon(Icons.videocam, size: 32),
+                        const SizedBox(height: 4),
+                        Text(DetectionService.instance.isRunning ? 'Stop' : 'Start', style: const TextStyle(fontSize: 26)),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 24),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      border: Border.all(color: Colors.black, width: 2),
-                      color: _autoMonitor ? Colors.green : Colors.red,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Auto', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-                        Switch(
-                          value: _autoMonitor,
-                          onChanged: _toggleAutoMonitor,
-                          activeColor: Colors.white,
-                          activeTrackColor: Colors.green.shade800,
-                          inactiveThumbColor: Colors.white,
-                          inactiveTrackColor: Colors.red.shade800,
+                  // Auto button hidden — re-enable when splash bug is resolved
+                  if (!DetectionService.instance.isRunning) ...[
+                    const SizedBox(width: 24),
+                    SizedBox(
+                      width: 140,
+                      height: 56,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          side: const BorderSide(color: Colors.black, width: 2),
+                          foregroundColor: Colors.black,
                         ),
-                      ],
+                        onPressed: _pickAndTestVideo,
+                        child: const Text('Test my app', style: TextStyle(fontSize: 22)),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
+              ),
+            if (DetectionService.instance.isRunning) ...[
+              const SizedBox(height: 12),
+              FadeTransition(
+                opacity: _blinkAnimation,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.circle, color: Colors.white, size: 12),
+                      SizedBox(width: 8),
+                      Text('Live — monitoring active',
+                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: 20),
-            SizedBox(
-              width: 180,
-              height: 56,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.notifications),
-                label: const Text('Notifications', style: TextStyle(fontSize: 30)),
-                style: ElevatedButton.styleFrom(
-                  side: const BorderSide(color: Colors.black, width: 2),
-                  foregroundColor: Colors.black,
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DetectionsScreen()),
+              ),
+              child: SizedBox(
+                width: 160,
+                height: 140,
+                child: Stack(
+                  children: [
+                    ClipPath(
+                      clipper: _TriangleClipper(),
+                      child: Container(color: Colors.white),
+                    ),
+                    CustomPaint(
+                      painter: _TriangleBorderPainter(),
+                      child: const SizedBox(width: 160, height: 140),
+                    ),
+                    Positioned(
+                      bottom: 18,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        children: const [
+                          Icon(Icons.warning_amber_rounded, size: 36, color: Colors.red),
+                          Text('Alerts', style: TextStyle(fontSize: 26, color: Colors.red, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            if (!DetectionService.instance.isRunning) ...[
-              const SizedBox(height: 20),
-              SizedBox(
-                width: 180,
-                height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    side: const BorderSide(color: Colors.black, width: 2),
-                    foregroundColor: Colors.black,
-                  ),
-                  onPressed: _pickAndTestVideo,
-                  child: const Text('Test my app', style: TextStyle(fontSize: 30)),
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -292,4 +276,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
   }
+}
+
+class _TriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_TriangleClipper _) => false;
+}
+
+class _TriangleBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    final path = Path()
+      ..moveTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TriangleBorderPainter _) => false;
 }

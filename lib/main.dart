@@ -42,31 +42,35 @@ Future<void> _saveDetectionFromMessage(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
+  try { MediaKit.ensureInitialized(); } catch (_) {}
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
         .timeout(const Duration(seconds: 5));
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     FirebaseMessaging.onMessage.listen(_saveDetectionFromMessage);
   } catch (_) {}
-  WifiWatcherService.configure();
-  WifiWatcherService.onStartDetection.listen((data) async {
-    final ip = data?['ip'] as String?;
-    if (ip == null || DetectionService.instance.isRunning) return;
-    const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
-    const t = Duration(seconds: 3);
-    try {
-      final user  = await storage.read(key: 'cam_user_$ip').timeout(t, onTimeout: () => null);
-      final pass  = await storage.read(key: 'cam_pass_$ip').timeout(t, onTimeout: () => null);
-      final port  = int.tryParse(await storage.read(key: 'cam_port_$ip').timeout(t, onTimeout: () => null) ?? '554') ?? 554;
-      final rtsp  = await storage.read(key: 'cam_rtsp_$ip').timeout(t, onTimeout: () => null) ?? '/stream1';
-      if (user == null || pass == null) return;
-      DetectionService.instance.start(
-        ip: ip, username: user, password: pass,
-        cameraName: ip, port: port, rtspPath: rtsp,
-      );
-    } catch (_) {}
-  });
+  // Auto-monitor disabled — background service kept configured but stopped
+  try { WifiWatcherService.configure(); } catch (_) {}
+  try { WifiWatcherService.disable(); } catch (_) {}
+  try {
+    WifiWatcherService.onStartDetection.listen((data) async {
+      final ip = data?['ip'] as String?;
+      if (ip == null || DetectionService.instance.isRunning) return;
+      const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+      const t = Duration(seconds: 3);
+      try {
+        final user  = await storage.read(key: 'cam_user_$ip').timeout(t, onTimeout: () => null);
+        final pass  = await storage.read(key: 'cam_pass_$ip').timeout(t, onTimeout: () => null);
+        final port  = int.tryParse(await storage.read(key: 'cam_port_$ip').timeout(t, onTimeout: () => null) ?? '554') ?? 554;
+        final rtsp  = await storage.read(key: 'cam_rtsp_$ip').timeout(t, onTimeout: () => null) ?? '/stream1';
+        if (user == null || pass == null) return;
+        DetectionService.instance.start(
+          ip: ip, username: user, password: pass,
+          cameraName: ip, port: port, rtspPath: rtsp,
+        );
+      } catch (_) {}
+    });
+  } catch (_) {}
   runApp(const MyApp());
 }
 

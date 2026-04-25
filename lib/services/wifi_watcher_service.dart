@@ -116,7 +116,8 @@ Future<void> _tick(
   // Get current WiFi SSID (requires location permission on Android)
   String? currentSsid;
   try {
-    currentSsid = (await WiFiForIoTPlugin.getSSID())
+    currentSsid = (await WiFiForIoTPlugin.getSSID()
+            .timeout(const Duration(seconds: 4), onTimeout: () => null))
         ?.replaceAll('"', '')
         .trim();
   } catch (e) {

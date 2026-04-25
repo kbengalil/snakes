@@ -36,7 +36,9 @@ class _StreamScreenState extends State<StreamScreen> {
       if (w != null && w > 0 && mounted) {
         setState(() {
           _videoWidth = w.toDouble();
-          if (_status == 'Connecting...') _status = 'Watching...';
+          if (_status == 'Please wait for live stream...' || _status == 'Connecting...') {
+            _status = 'Watching...';
+          }
         });
       }
     });
@@ -116,6 +118,23 @@ class _StreamScreenState extends State<StreamScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(DetectionService.instance.cameraName),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.black,
+                side: const BorderSide(color: Colors.black, width: 2),
+              ),
+              child: const Text('Home page'),
+            ),
+          ),
+        ],
       ),
       backgroundColor: Colors.black,
       body: Stack(

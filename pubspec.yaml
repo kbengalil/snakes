@@ -100,6 +100,8 @@ flutter:
     - assets/guide_8.jpeg
     - assets/guide_9a.jpeg
     - assets/guide_9b.jpeg
+    - assets/guide_10.png
+    - assets/guide_11.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
