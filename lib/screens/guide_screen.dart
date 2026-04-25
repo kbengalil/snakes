@@ -335,10 +335,18 @@ class _Page11Content extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.black, width: 2),
             ),
-            child: const Text(
-              'In the home screen you will now see that the green play button has turned red with the "Stop" text, and the green box "Live — monitoring active".',
+            child: RichText(
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              text: const TextSpan(
+                style: TextStyle(fontSize: 22, color: Colors.black),
+                children: [
+                  TextSpan(text: 'You will now see that the green play button has turned red with the "'),
+                  TextSpan(text: 'Stop', style: TextStyle(color: Colors.red)),
+                  TextSpan(text: '" text, and a new green "'),
+                  TextSpan(text: 'Active', style: TextStyle(color: Colors.green)),
+                  TextSpan(text: '". You can press the green button to view the live stream but you do not need to.'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),

@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image/image.dart' as img;
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
 import 'yolo_detector.dart';
 
@@ -15,6 +16,7 @@ class DetectionService {
   static final DetectionService instance = DetectionService._();
 
   Player? _player;
+  VideoController? _videoController;
   YoloDetector? _detector;
   Timer? _timer;
   bool _detecting = false;
@@ -37,6 +39,7 @@ class DetectionService {
   Stream<List<DetectionBox>> get boxesStream => _boxesController.stream;
 
   Player? get player => _player;
+  VideoController? get videoController => _videoController;
   bool get isRunning => _running;
   String get cameraName => _cameraName;
   String get ip => _ip;
@@ -70,6 +73,7 @@ class DetectionService {
     await _detector!.initialize();
 
     _player = Player();
+    _videoController = VideoController(_player!);
     await _player!.setVolume(0);
     final u = Uri.encodeComponent(username);
     final p = Uri.encodeComponent(password);
@@ -87,6 +91,7 @@ class DetectionService {
     _running = false;
     _timer?.cancel();
     _timer = null;
+    _videoController = null;
     _player?.dispose();
     _player = null;
     // Wait for any in-flight compute() to finish before closing interpreter
@@ -115,11 +120,13 @@ class DetectionService {
 
     _detecting = true;
     try {
+      print('[DETECTION] tick — taking screenshot...');
       final bytes = await _player?.screenshot()
           .timeout(const Duration(seconds: 3), onTimeout: () => null);
       if (!_running) return;
       if (bytes == null) {
-        if (_hasHadFirstFrame) {
+        print('[DETECTION] screenshot returned null (playing=${_player?.state.playing})');
+        if (_hasHadFirstFrame && _player?.state.playing == false) {
           _consecutiveFailures++;
           if (_consecutiveFailures >= _maxFailures) {
             stop();
@@ -127,19 +134,21 @@ class DetectionService {
         }
         return;
       }
+      print('[DETECTION] screenshot OK — ${bytes.length} bytes — running YOLO...');
       _hasHadFirstFrame = true;
       _consecutiveFailures = 0;
 
       final result = await _detector!.detect(bytes);
       if (!_running) return;
 
+      print('[DETECTION] YOLO done — detected=${result.detected} boxes=${result.boxes.length}');
       _boxesController.add(result.boxes);
 
       if (result.detected) {
         await _sendNotification(bytes, result.boxes);
       }
-    } catch (_) {
-      // ignore errors from player disposed or network issues
+    } catch (e) {
+      print('[DETECTION] ERROR: $e');
     } finally {
       _detecting = false;
     }

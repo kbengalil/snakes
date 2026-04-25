@@ -273,8 +273,9 @@ class _VideoTestScreenState extends State<VideoTestScreen> {
 
   @override
   void dispose() {
+    _done = true;
     _timer?.cancel();
-    if (!_done) { _player.dispose(); }
+    _player.dispose();
     _detector?.dispose();
     super.dispose();
   }

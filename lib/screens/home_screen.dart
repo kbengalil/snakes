@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:app_settings/app_settings.dart';
+import 'package:path_provider/path_provider.dart';
 import 'video_picker_screen.dart';
 import 'guide_screen.dart';
 import '../services/detection_service.dart';
@@ -25,13 +27,23 @@ int detectionIntervalMs = 1000;
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   bool _autoMonitor = false;
   String? _homeSsid;
+  int _detectionCount = 0;
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+
+  Future<void> _loadDetectionCount() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final detectionsDir = Directory('${dir.path}/detections');
+    if (!await detectionsDir.exists()) { if (mounted) setState(() => _detectionCount = 0); return; }
+    final count = detectionsDir.listSync().whereType<File>().where((f) => f.path.endsWith('.jpg')).length;
+    if (mounted) setState(() => _detectionCount = count);
+  }
 
   @override
   void initState() {
     super.initState();
     _loadAutoMonitorState();
+    _loadDetectionCount();
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -200,6 +212,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                   // Auto button hidden — re-enable when splash bug is resolved
+                  if (DetectionService.instance.isRunning) ...[
+                    const SizedBox(width: 24),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const StreamScreen()),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.black, width: 2),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, color: Colors.white, size: 16),
+                            SizedBox(width: 10),
+                            Text('Active',
+                                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   if (!DetectionService.instance.isRunning) ...[
                     const SizedBox(width: 24),
                     SizedBox(
@@ -219,35 +257,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ],
               ),
-            if (DetectionService.instance.isRunning) ...[
-              const SizedBox(height: 12),
-              FadeTransition(
-                opacity: _blinkAnimation,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.black, width: 2),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, color: Colors.white, size: 12),
-                      SizedBox(width: 8),
-                      Text('Live — monitoring active',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 20),
             GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DetectionsScreen()),
-              ),
+              onTap: () async {
+                setState(() => _detectionCount = 0);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DetectionsScreen()),
+                );
+                _loadDetectionCount();
+              },
               child: SizedBox(
                 width: 160,
                 height: 140,
@@ -272,6 +291,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
+                    if (_detectionCount > 0)
+                      Positioned(
+                        top: 8,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$_detectionCount',
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

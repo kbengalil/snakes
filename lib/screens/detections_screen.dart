@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DetectionsScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class _DetectionsScreenState extends State<DetectionsScreen> {
   void initState() {
     super.initState();
     _loadImages();
+    FlutterLocalNotificationsPlugin().cancelAll();
   }
 
   Future<void> _loadImages() async {
