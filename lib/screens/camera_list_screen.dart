@@ -63,57 +63,79 @@ class _CameraListScreenState extends State<CameraListScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          bool obscure = true;
-          return StatefulBuilder(
-            builder: (ctx, setDialogState) => AlertDialog(
-              title: Text(device.name ?? 'Camera'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: userController,
-                    decoration: const InputDecoration(labelText: 'Username'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: passController,
-                    obscureText: obscure,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      suffixIcon: IconButton(
-                        icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setDialogState(() => obscure = !obscure),
-                      ),
-                    ),
-                  ),
-                ],
+      builder: (ctx) => AlertDialog(
+        titleTextStyle: const TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(device.name ?? 'Camera'),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Colors.green, width: 3),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: userController,
+              style: const TextStyle(fontSize: 22),
+              decoration: InputDecoration(
+                labelText: 'Username',
+                labelStyle: const TextStyle(fontSize: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black, width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black, width: 2),
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final user = userController.text.trim();
-                    final pass = passController.text;
-                    if (user.isEmpty || pass.isEmpty) return;
-
-                    // Save credentials for next time
-                    await _storage.write(key: 'cam_user_${device.ip}', value: user);
-                    await _storage.write(key: 'cam_pass_${device.ip}', value: pass);
-
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    _openStream(device, user, pass);
-                  },
-                  child: const Text('Connect'),
-                ),
-              ],
             ),
-          );
-        },
+            const SizedBox(height: 16),
+            TextField(
+              controller: passController,
+              obscureText: false,
+              style: const TextStyle(fontSize: 22),
+              decoration: InputDecoration(
+                labelText: 'Password',
+                labelStyle: const TextStyle(fontSize: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black, width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.black, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(fontSize: 18)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final user = userController.text.trim();
+              final pass = passController.text;
+              if (user.isEmpty || pass.isEmpty) return;
+
+              await _storage.write(key: 'cam_user_${device.ip}', value: user);
+              await _storage.write(key: 'cam_pass_${device.ip}', value: pass);
+
+              if (ctx.mounted) Navigator.pop(ctx);
+              _openStream(device, user, pass);
+            },
+            style: ElevatedButton.styleFrom(
+              side: const BorderSide(color: Colors.black, width: 2),
+            ),
+            child: const Text('Connect', style: TextStyle(fontSize: 18)),
+          ),
+        ],
       ),
     );
   }
@@ -218,13 +240,32 @@ class _CameraListScreenState extends State<CameraListScreen> {
     if (_cameras.isEmpty) {
       return Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            const Icon(Icons.videocam_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 60),
+            const Icon(Icons.videocam_off, size: 64, color: Colors.black),
             const SizedBox(height: 16),
-            const Text('No cameras found on this network'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: const Text(
+                'No cameras found on this network',
+                style: TextStyle(color: Colors.red, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _scanNetwork, child: const Text('Scan Again')),
+            ElevatedButton(
+              onPressed: _scanNetwork,
+              style: ElevatedButton.styleFrom(
+                side: const BorderSide(color: Colors.black, width: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+              child: const Text('Scan Again', style: TextStyle(fontSize: 22)),
+            ),
           ],
         ),
       );

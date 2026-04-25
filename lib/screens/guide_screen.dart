@@ -180,30 +180,50 @@ class _GuidePage extends StatelessWidget {
                   if (!isFirst)
                     GestureDetector(
                       onTap: onPrev,
-                      child: ClipPath(
-                        clipper: _ArrowBackClipper(),
-                        child: Container(
-                          width: 90,
-                          height: 44,
-                          color: Colors.white,
-                          child: const Center(
-                            child: Text('Back', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
+                      child: SizedBox(
+                        width: 90,
+                        height: 44,
+                        child: Stack(
+                          children: [
+                            ClipPath(
+                              clipper: _ArrowBackClipper(),
+                              child: Container(color: Colors.white),
+                            ),
+                            CustomPaint(
+                              painter: _ArrowBackBorderPainter(),
+                              child: const SizedBox(width: 90, height: 44),
+                            ),
+                            const Positioned.fill(
+                              child: Center(
+                                child: Text('Back', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   if (!isLast)
                     GestureDetector(
                       onTap: onNext,
-                      child: ClipPath(
-                        clipper: _ArrowClipper(),
-                        child: Container(
-                          width: 90,
-                          height: 44,
-                          color: Colors.white,
-                          child: const Center(
-                            child: Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
+                      child: SizedBox(
+                        width: 90,
+                        height: 44,
+                        child: Stack(
+                          children: [
+                            ClipPath(
+                              clipper: _ArrowClipper(),
+                              child: Container(color: Colors.white),
+                            ),
+                            CustomPaint(
+                              painter: _ArrowBorderPainter(),
+                              child: const SizedBox(width: 90, height: 44),
+                            ),
+                            const Positioned.fill(
+                              child: Center(
+                                child: Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -234,6 +254,50 @@ class _ArrowBackClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(_ArrowBackClipper _) => false;
+}
+
+class _ArrowBackBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final arrowWidth = size.width * 0.25;
+    final path = Path()
+      ..moveTo(arrowWidth, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(arrowWidth, size.height)
+      ..lineTo(0, size.height / 2)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ArrowBackBorderPainter _) => false;
+}
+
+class _ArrowBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final arrowWidth = size.width * 0.25;
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width - arrowWidth, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(size.width - arrowWidth, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ArrowBorderPainter _) => false;
 }
 
 class _ArrowClipper extends CustomClipper<Path> {
@@ -337,21 +401,23 @@ class _Page9Content extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.black, width: 2),
             ),
-            child: const Text(
-              'You will be asked to enter a username and password. These are the username and password from your camera app that you received when you purchased the camera. If you do not remember them, open your camera app and look there.',
+            child: RichText(
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              text: const TextSpan(
+                style: TextStyle(fontSize: 22, color: Colors.black),
+                children: [
+                  TextSpan(text: 'Enter the username and password from your '),
+                  TextSpan(text: 'CAMERA APP', style: TextStyle(color: Colors.red)),
+                  TextSpan(text: ' that you have installed when purchased the camera. If you do not remember them, open your '),
+                  TextSpan(text: 'CAMERA APP', style: TextStyle(color: Colors.red)),
+                  TextSpan(text: ' and look there. You only have to do this step once.'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: Row(
-              children: [
-                Expanded(child: Image.asset('assets/guide_9a.jpeg', fit: BoxFit.contain)),
-                const SizedBox(width: 8),
-                Expanded(child: Image.asset('assets/guide_9b.jpeg', fit: BoxFit.contain)),
-              ],
-            ),
+            child: Image.asset('assets/guide_9.jpeg', fit: BoxFit.contain),
           ),
         ],
       ),
@@ -475,10 +541,16 @@ class _Page5Content extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.black, width: 2),
             ),
-            child: const Text(
-              'To get started, first make sure your device is connected to WiFi, then press the green Start button shown with the red arrow.',
+            child: RichText(
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              text: const TextSpan(
+                style: TextStyle(fontSize: 22, color: Colors.black),
+                children: [
+                  TextSpan(text: 'To get started, '),
+                  TextSpan(text: 'FIRST MAKE SURE YOUR DEVICE IS CONNECTED TO WIFI,', style: TextStyle(color: Colors.red)),
+                  TextSpan(text: ' then press the green Start button shown with the arrow.'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -572,24 +644,61 @@ class _Page1Content extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
-        children: const [
-          SizedBox(height: 40),
-          Text(
-            'Hi, welcome to the Snakes Detector app.',
+        children: [
+          const SizedBox(height: 40),
+          const Text(
+            'Hi, welcome to the Snakes Detector app guide.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 26, color: Colors.black, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 24),
-          Text(
-            'This app works with any ONVIF-compatible IP camera, including popular brands such as Tapo, Hikvision, Dahua, Reolink, and Amcrest.',
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black, width: 2),
+            ),
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: const TextSpan(
+                style: TextStyle(fontSize: 22, color: Colors.black),
+                children: [
+                  TextSpan(text: 'This app works with any '),
+                  TextSpan(text: 'ONVIF', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: '-compatible IP camera, including popular brands such as '),
+                  TextSpan(text: 'Tapo', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: ', '),
+                  TextSpan(text: 'Hikvision', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: ', '),
+                  TextSpan(text: 'Dahua', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: ', '),
+                  TextSpan(text: 'Reolink', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: ', and '),
+                  TextSpan(text: 'Amcrest', style: TextStyle(color: Colors.red, fontSize: 26)),
+                  TextSpan(text: '.'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'For any questions, please feel free to contact us at:',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 22, color: Colors.black),
           ),
-          SizedBox(height: 24),
-          Text(
-            'For any questions, please feel free to contact us at kbengalil@gmail.com. Now let\'s get started!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, color: Colors.black),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black, width: 2),
+            ),
+            child: const Text(
+              'kbengalil@gmail.com',
+              style: TextStyle(fontSize: 26, color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -615,7 +724,7 @@ class _Page2Content extends StatelessWidget {
               border: Border.all(color: Colors.black, width: 2),
             ),
             child: const Text(
-              'First, you are welcome to test this app with a video of a snake. If you do not have one, you can create one using a tool like Gemini video generator. Just press the "Test my app" button marked with the green arrow.',
+              'You can test your app with a video of a snake. If you do not have one, simply create one using a tool like Gemini video generator. Press the "Test my app" button marked with the arrow.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 22, color: Colors.black),
             ),

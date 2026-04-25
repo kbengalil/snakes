@@ -103,8 +103,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('No WiFi'),
-            content: const Text('Please connect to your home WiFi first, then press Start again.'),
+            title: const Text('No WiFi', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            content: const Text(
+              'Please connect to your home WiFi first, then press Start again.',
+              style: TextStyle(color: Colors.red, fontSize: 18),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Colors.black, width: 2),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -186,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.videocam, size: 32),
+                        Icon(DetectionService.instance.isRunning ? Icons.stop : Icons.play_arrow, size: 32),
                         const SizedBox(height: 4),
                         Text(DetectionService.instance.isRunning ? 'Stop' : 'Start', style: const TextStyle(fontSize: 26)),
                       ],
@@ -196,15 +203,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   if (!DetectionService.instance.isRunning) ...[
                     const SizedBox(width: 24),
                     SizedBox(
-                      width: 140,
-                      height: 56,
+                      width: 168,
+                      height: 67,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.lightBlue,
                           side: const BorderSide(color: Colors.black, width: 2),
-                          foregroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: _pickAndTestVideo,
-                        child: const Text('Test my app', style: TextStyle(fontSize: 22)),
+                        child: const Text('Test my app', style: TextStyle(fontSize: 28)),
                       ),
                     ),
                   ],

@@ -89,7 +89,6 @@ flutter:
     - assets/models/
     - assets/login_bg.png
     - assets/home_bg.png
-    - assets/guide_1.pdf
     - assets/guide_2.png
     - assets/guide_3.jpeg
     - assets/guide_4a.jpeg
@@ -98,8 +97,7 @@ flutter:
     - assets/guide_6.jpeg
     - assets/guide_7.jpeg
     - assets/guide_8.jpeg
-    - assets/guide_9a.jpeg
-    - assets/guide_9b.jpeg
+    - assets/guide_9.jpeg
     - assets/guide_10.png
     - assets/guide_11.jpeg
 
