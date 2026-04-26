@@ -32,11 +32,16 @@ class DetectionService {
   static const _maxFailures = 20;
 
   DateTime? _lastNotification;
+  int _notificationId = 0;
   final _notifications = FlutterLocalNotificationsPlugin();
 
   // Screens subscribe to this to get live bbox updates
   final _boxesController = StreamController<List<DetectionBox>>.broadcast();
   Stream<List<DetectionBox>> get boxesStream => _boxesController.stream;
+
+  // Fires once every time an image is actually saved to disk
+  final _savedController = StreamController<void>.broadcast();
+  Stream<void> get imageSavedStream => _savedController.stream;
 
   Player? get player => _player;
   VideoController? get videoController => _videoController;
@@ -83,7 +88,14 @@ class DetectionService {
     const storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
     await storage.write(key: 'cam_last_ip', value: ip);
 
-    _restartTimer();
+    // Wait until the stream is actually playing before starting detection,
+    // so screenshot() has a valid frame to capture from the start.
+    _player!.stream.width.firstWhere((w) => w != null && w > 0).then((_) {
+      if (_running) {
+        print('[DETECTION] stream ready — starting detection timer');
+        _restartTimer();
+      }
+    });
   }
 
   Future<void> stop() async {
@@ -163,7 +175,7 @@ class DetectionService {
     final imagePath = await _saveImage(bytes, boxes);
 
     await _notifications.show(
-      0,
+      _notificationId++,
       'Detection Alert',
       '$_cameraName detected something',
       NotificationDetails(
@@ -207,6 +219,7 @@ class DetectionService {
     });
 
     await file.writeAsBytes(annotated);
+    _savedController.add(null); // notify listeners that a new image was saved
     return file.path;
   }
 }

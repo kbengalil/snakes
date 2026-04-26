@@ -10,7 +10,7 @@ class GuideScreen extends StatefulWidget {
 class _GuideScreenState extends State<GuideScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final int _totalPages = 11;
+  final int _totalPages = 14;
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
@@ -130,8 +130,32 @@ class _GuideScreenState extends State<GuideScreen> {
             onPrev: _prevPage,
             onHome: _goHome,
             isFirst: false,
-            isLast: true,
+            isLast: false,
             child: const _Page11Content(),
+          ),
+          _GuidePage(
+            onNext: _nextPage,
+            onPrev: _prevPage,
+            onHome: _goHome,
+            isFirst: false,
+            isLast: false,
+            child: const _Page12Content(),
+          ),
+          _GuidePage(
+            onNext: _nextPage,
+            onPrev: _prevPage,
+            onHome: _goHome,
+            isFirst: false,
+            isLast: false,
+            child: const _Page13Content(),
+          ),
+          _GuidePage(
+            onNext: _nextPage,
+            onPrev: _prevPage,
+            onHome: _goHome,
+            isFirst: false,
+            isLast: true,
+            child: const _Page14Content(),
           ),
         ],
       ),
@@ -158,9 +182,11 @@ class _GuidePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFCFE87A),
-      child: SafeArea(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset('assets/guide_bg.png', fit: BoxFit.cover),
+        SafeArea(
         child: Column(
           children: [
             Padding(
@@ -174,8 +200,10 @@ class _GuidePage extends StatelessWidget {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       side: const BorderSide(color: Colors.black, width: 1),
+                      padding: const EdgeInsets.all(12),
+                      minimumSize: Size.zero,
                     ),
-                    child: const Text('Home page'),
+                    child: const Icon(Icons.home, size: 36),
                   ),
                   if (!isFirst)
                     GestureDetector(
@@ -187,15 +215,22 @@ class _GuidePage extends StatelessWidget {
                           children: [
                             ClipPath(
                               clipper: _ArrowBackClipper(),
-                              child: Container(color: Colors.white),
+                              child: Container(color: Colors.red[200]),
                             ),
                             CustomPaint(
                               painter: _ArrowBackBorderPainter(),
                               child: const SizedBox(width: 90, height: 44),
                             ),
-                            const Positioned.fill(
+                            Positioned.fill(
                               child: Center(
-                                child: Text('Back', style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text('Back', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
                               ),
                             ),
                           ],
@@ -212,15 +247,22 @@ class _GuidePage extends StatelessWidget {
                           children: [
                             ClipPath(
                               clipper: _ArrowClipper(),
-                              child: Container(color: Colors.white),
+                              child: Container(color: Colors.lightGreen),
                             ),
                             CustomPaint(
                               painter: _ArrowBorderPainter(),
                               child: const SizedBox(width: 90, height: 44),
                             ),
-                            const Positioned.fill(
+                            Positioned.fill(
                               child: Center(
-                                child: Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
                               ),
                             ),
                           ],
@@ -234,6 +276,7 @@ class _GuidePage extends StatelessWidget {
           ],
         ),
       ),
+      ],
     );
   }
 }
@@ -300,6 +343,119 @@ class _ArrowBorderPainter extends CustomPainter {
   bool shouldRepaint(_ArrowBorderPainter _) => false;
 }
 
+class _Page14Content extends StatelessWidget {
+  const _Page14Content();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Disclosure',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 28, color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black, width: 2),
+            ),
+            child: const Text(
+              'This app is A.I. based, built with a custom database made for snakes. However, it cannot guarantee 100% detection accuracy and may produce some false detections as well.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Page13Content extends StatelessWidget {
+  const _Page13Content();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black, width: 2),
+            ),
+            child: const Text(
+              'Press the alerts button and you will see the saved detections. Press on one to see what was detected. You can see the snake in the bottom of the right image with the red detection rectangle.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: Image.asset('assets/guide_13a.jpeg', fit: BoxFit.contain)),
+                const SizedBox(width: 8),
+                Expanded(child: Image.asset('assets/guide_13b.jpeg', fit: BoxFit.contain)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Page12Content extends StatelessWidget {
+  const _Page12Content();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.black, width: 2),
+            ),
+            child: const Text(
+              'When the app detects a snake, you will see a notification in both the app\'s icon and the alerts button.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: Image.asset('assets/guide_12a.png', fit: BoxFit.contain)),
+                const SizedBox(width: 8),
+                Expanded(child: Image.asset('assets/guide_12b.jpeg', fit: BoxFit.contain)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ArrowClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -338,7 +494,7 @@ class _Page11Content extends StatelessWidget {
             child: RichText(
               textAlign: TextAlign.center,
               text: const TextSpan(
-                style: TextStyle(fontSize: 22, color: Colors.black),
+                style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
                 children: [
                   TextSpan(text: 'You will now see that the green play button has turned red with the "'),
                   TextSpan(text: 'Stop', style: TextStyle(color: Colors.red)),
@@ -379,7 +535,7 @@ class _Page10Content extends StatelessWidget {
             child: const Text(
               'You can navigate back to the home page at any time by pressing the green "Home page" next to the red arrow.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -412,7 +568,7 @@ class _Page9Content extends StatelessWidget {
             child: RichText(
               textAlign: TextAlign.center,
               text: const TextSpan(
-                style: TextStyle(fontSize: 22, color: Colors.black),
+                style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
                 children: [
                   TextSpan(text: 'Enter the username and password from your '),
                   TextSpan(text: 'CAMERA APP', style: TextStyle(color: Colors.red)),
@@ -453,7 +609,7 @@ class _Page8Content extends StatelessWidget {
             child: const Text(
               'Otherwise, you will see a list of the cameras found. In this version you can only choose one camera — pick the one you want.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -486,7 +642,7 @@ class _Page7Content extends StatelessWidget {
             child: const Text(
               'If the WiFi is connected but the camera is not, you will see this message.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -519,7 +675,7 @@ class _Page6Content extends StatelessWidget {
             child: const Text(
               'If you get this message, it means your WiFi is not connected.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -552,7 +708,7 @@ class _Page5Content extends StatelessWidget {
             child: RichText(
               textAlign: TextAlign.center,
               text: const TextSpan(
-                style: TextStyle(fontSize: 22, color: Colors.black),
+                style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
                 children: [
                   TextSpan(text: 'To get started, '),
                   TextSpan(text: 'FIRST MAKE SURE YOUR DEVICE IS CONNECTED TO WIFI,', style: TextStyle(color: Colors.red)),
@@ -591,7 +747,7 @@ class _Page4Content extends StatelessWidget {
             child: const Text(
               'The video will run, and after a few seconds you should see the snake detections.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -630,7 +786,7 @@ class _Page3Content extends StatelessWidget {
             child: const Text(
               'Now you can simply choose a video from your device.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),
@@ -670,7 +826,7 @@ class _Page1Content extends StatelessWidget {
             child: RichText(
               textAlign: TextAlign.center,
               text: const TextSpan(
-                style: TextStyle(fontSize: 22, color: Colors.black),
+                style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
                 children: [
                   TextSpan(text: 'This app works with any '),
                   TextSpan(text: 'ONVIF', style: TextStyle(color: Colors.red, fontSize: 26)),
@@ -693,7 +849,7 @@ class _Page1Content extends StatelessWidget {
           const Text(
             'For any questions, please feel free to contact us at:',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, color: Colors.black),
+            style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Container(
@@ -734,7 +890,7 @@ class _Page2Content extends StatelessWidget {
             child: const Text(
               'You can test your app with a video of a snake. If you do not have one, simply create one using a tool like Gemini video generator. Press the "Test my app" button marked with the arrow.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, color: Colors.black),
+              style: TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 24),

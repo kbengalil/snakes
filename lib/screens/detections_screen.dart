@@ -17,7 +17,7 @@ class _DetectionsScreenState extends State<DetectionsScreen> {
   void initState() {
     super.initState();
     _loadImages();
-    FlutterLocalNotificationsPlugin().cancelAll();
+    try { FlutterLocalNotificationsPlugin().cancelAll(); } catch (_) {}
   }
 
   Future<void> _loadImages() async {

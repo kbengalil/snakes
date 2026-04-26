@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _detectionCount = 0;
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+  StreamSubscription? _savedSub;
 
   Future<void> _loadDetectionCount() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -44,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.initState();
     _loadAutoMonitorState();
     _loadDetectionCount();
+    _savedSub = DetectionService.instance.imageSavedStream.listen((_) {
+      if (mounted) setState(() => _detectionCount++);
+    });
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -53,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _savedSub?.cancel();
     _blinkController.dispose();
     super.dispose();
   }
@@ -265,7 +271,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   context,
                   MaterialPageRoute(builder: (_) => const DetectionsScreen()),
                 );
-                _loadDetectionCount();
               },
               child: SizedBox(
                 width: 160,
@@ -293,17 +298,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     if (_detectionCount > 0)
                       Positioned(
-                        top: 8,
-                        right: 16,
+                        top: 4,
+                        right: 12,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2),
                           ),
                           child: Text(
                             '$_detectionCount',
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),

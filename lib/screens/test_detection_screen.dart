@@ -222,7 +222,19 @@ class _VideoTestScreenState extends State<VideoTestScreen> {
     _detector = YoloDetector();
     await _detector!.initialize();
     await _player.open(Media('file://${widget.filePath}'));
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // If no video loaded after 1.5s, treat as bad file and bail out
+    if (_player.state.width == null || _player.state.width == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load file — please pick a video')),
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
+
     if (mounted) setState(() => _status = 'Scanning...');
     _timer = Timer.periodic(Duration(milliseconds: detectionIntervalMs), _onTick);
 

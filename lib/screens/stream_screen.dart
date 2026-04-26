@@ -156,7 +156,10 @@ class _StreamScreenState extends State<StreamScreen> {
         fit: StackFit.expand,
         children: [
           // Video widget always stays rendered — required for screenshot() to work
-          Video(controller: _controller, controls: NoVideoControls),
+          if (DetectionService.instance.videoController != null)
+            Video(controller: _controller, controls: NoVideoControls)
+          else
+            const ColoredBox(color: Colors.black),
           if (_boxes.isNotEmpty && !_showingHome)
             Positioned.fill(
               child: CustomPaint(
@@ -231,10 +234,8 @@ class _HomeOverlayState extends State<_HomeOverlay> {
   void initState() {
     super.initState();
     _loadCount();
-    _boxesSub = DetectionService.instance.boxesStream.listen((boxes) {
-      if (boxes.isNotEmpty && mounted) {
-        setState(() => _detectionCount++);
-      }
+    _boxesSub = DetectionService.instance.imageSavedStream.listen((_) {
+      if (mounted) setState(() => _detectionCount++);
     });
   }
 
@@ -327,7 +328,6 @@ class _HomeOverlayState extends State<_HomeOverlay> {
                       context,
                       MaterialPageRoute(builder: (_) => const DetectionsScreen()),
                     );
-                    _loadCount();
                   },
                   child: SizedBox(
                     width: 160,
@@ -359,19 +359,20 @@ class _HomeOverlayState extends State<_HomeOverlay> {
                         ),
                         if (_detectionCount > 0)
                           Positioned(
-                            top: 8,
-                            right: 16,
+                            top: 4,
+                            right: 12,
                             child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black, width: 2),
                               ),
                               child: Text(
                                 '$_detectionCount',
                                 style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 14,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold),
                               ),
                             ),
